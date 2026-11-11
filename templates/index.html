@@ -7,9 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #0f172a; }
+        @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700;800&display=swap');
+        body { font-family: 'Atkinson Hyperlegible Next', sans-serif; background-color: #f1f5f9; color: #0f172a; }
         .card-white { background: #ffffff; border: 2px solid #cbd5e1; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
+        :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+        .chat-scroll { overscroll-behavior-y: contain; overflow-wrap: anywhere; }
+        @media print {
+            body.mostrando-resumen { display: block; background: white; padding: 0; }
+            body.mostrando-resumen #main-header,
+            body.mostrando-resumen #main-footer,
+            body.mostrando-resumen #resumen-acciones { display: none !important; }
+            body.mostrando-resumen main { display: block; margin: 0; }
+            #step-resumen { box-shadow: none; border: 0; max-width: none; }
+        }
         .chat-scroll::-webkit-scrollbar { width: 8px; }
         .chat-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 4px; }
         
@@ -28,7 +38,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen md:h-screen flex flex-col justify-between p-4 md:p-6 select-none bg-slate-100 overflow-y-auto md:overflow-hidden">
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 bg-slate-100">
 
     <!-- Encabezado Senior -->
     <header id="main-header" class="flex flex-col sm:flex-row justify-between items-center card-white p-4 md:p-5 rounded-2xl gap-4">
@@ -90,7 +100,7 @@
 
         <!-- PANTALLA 2: CHATBOT ACCESIBLE -->
         <div id="step-triage" class="hidden w-full max-w-5xl card-white p-4 md:p-8 rounded-3xl my-auto">
-            <div class="flex flex-col justify-between min-h-[480px] md:h-[560px]">
+            <div class="flex flex-col gap-4">
                 <div>
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-200 pb-3 md:pb-4 mb-4 gap-2">
                         <h3 class="text-lg md:text-xl font-black text-slate-900 flex items-center gap-3">
@@ -101,10 +111,10 @@
                         </button>
                     </div>
 
-                    <div id="chat-box" class="space-y-4 h-[250px] md:h-[300px] overflow-y-auto chat-scroll pr-3">
+                    <div id="chat-box" role="log" aria-label="Conversación de triage" tabindex="0" class="space-y-4 h-[clamp(11rem,38dvh,22rem)] overflow-y-auto chat-scroll pr-3">
                         <div class="flex gap-3 md:gap-4">
                             <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 shadow">IA</div>
-                            <div id="last-ai-msg" class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
+                            <div data-ai-message class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
                                 Hola, para ayudarle por favor hable por el micrófono o presione una de las opciones: <strong>¿Qué síntoma o molestia principal tiene hoy?</strong>
                             </div>
                         </div>
@@ -112,7 +122,7 @@
                 </div>
 
                 <div class="pt-4 border-t-2 border-slate-200">
-                    <p class="text-sm md:text-base font-bold text-slate-700 mb-3">Seleccione una opción o responda hablando:</p>
+                    <p id="chat-status" class="text-sm md:text-base font-bold text-slate-700 mb-3" role="status"></p>
                     
                     <div id="quick-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-4">
                         <button onclick="selectQuickAnswer('Me duele la cabeza')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-extrabold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
@@ -129,16 +139,16 @@
                         </button>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                    <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
                         <button id="btn-mic" onclick="toggleVoiceRecognition()" 
                                 class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 md:py-4 rounded-2xl font-black text-base md:text-lg flex items-center justify-center gap-3 border-2 border-rose-700 shadow-md transition active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
                             <i class="fa-solid fa-microphone text-xl md:text-2xl"></i>
                             <span id="mic-text">Hablar por Micrófono</span>
                         </button>
 
-                        <input type="text" id="user-msg" placeholder="O escriba aquí si lo prefiere..." 
+                        <input type="text" id="user-msg" aria-label="Respuesta al triage" maxlength="2000" placeholder="O escriba aquí si lo prefiere..."
                                onkeydown="if(event.key==='Enter') sendUserMessage()"
-                               class="flex-1 bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 md:py-4 text-base md:text-lg font-semibold focus:outline-none focus:border-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
+                               class="min-w-0 flex-1 bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 md:py-4 text-base md:text-lg font-semibold focus:outline-none focus:border-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
                         
                         <button id="btn-send" onclick="sendUserMessage()" class="bg-blue-700 hover:bg-blue-800 text-white px-6 md:px-8 py-3 md:py-4 rounded-2xl font-black text-lg md:text-xl transition disabled:opacity-50 disabled:pointer-events-none">
                             Enviar
@@ -149,8 +159,8 @@
         </div>
 
         <!-- PANTALLA 3: TELEMEDICINA FULLSCREEN REAL (WEBRTC) -->
-        <div id="step-telemedicina" class="hidden w-full h-[70vh] md:h-[82vh] relative bg-slate-950 rounded-3xl overflow-hidden border-4 border-slate-800 shadow-2xl">
-            <video id="doctor-remote-video" autoplay playsinline class="w-full h-full object-cover bg-black"></video>
+        <div id="step-telemedicina" class="hidden w-full h-[min(70dvh,48rem)] min-h-[15rem] relative bg-slate-950 rounded-3xl overflow-hidden border-4 border-slate-800 shadow-2xl">
+            <video id="doctor-remote-video" autoplay playsinline class="w-full h-full object-contain bg-black"></video>
 
             <div class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
                 <div class="bg-slate-950/90 backdrop-blur-md text-white text-xs md:text-base px-4 py-2 md:px-5 md:py-3 rounded-2xl border-2 border-slate-700 flex items-center gap-3">
@@ -159,15 +169,41 @@
                 </div>
             </div>
 
-            <div class="absolute bottom-4 left-4 md:bottom-6 md:left-6 w-36 h-28 md:w-52 md:h-36 bg-slate-900 rounded-2xl border-2 md:border-4 border-slate-700 overflow-hidden shadow-2xl flex items-center justify-center">
+            <div class="absolute bottom-4 left-4 md:bottom-6 md:left-6 w-28 h-20 sm:w-36 sm:h-28 md:w-52 md:h-36 bg-slate-900 rounded-2xl border-2 md:border-4 border-slate-700 overflow-hidden shadow-2xl flex items-center justify-center">
                 <video id="totem-local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
             </div>
 
-            <div class="absolute bottom-4 right-4 md:bottom-6 md:right-6 bg-slate-950/90 backdrop-blur-md text-amber-300 text-xs md:text-sm px-4 py-3 md:px-6 md:py-4 rounded-2xl border-2 border-amber-500/40 font-bold max-w-xs md:max-w-md">
-                <i class="fa-solid fa-volume-high text-lg md:text-xl mr-2"></i>
-                Hable directamente con el doctor. Él finalizará la llamada al terminar su consulta.
-            </div>
+            <button type="button" onclick="finalizarLlamadaTotem(true)" class="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-2 bg-rose-700 hover:bg-rose-800 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl text-sm md:text-lg font-black">
+                <i class="fa-solid fa-phone-slash" aria-hidden="true"></i>
+                Finalizar llamada
+            </button>
         </div>
+
+        <section id="step-resumen" class="hidden w-full max-w-3xl card-white rounded-3xl p-5 sm:p-8" aria-labelledby="resumen-titulo">
+            <header class="border-b-2 border-slate-200 pb-4">
+                <p class="font-bold text-blue-800">Consulta de telemedicina</p>
+                <h2 id="resumen-titulo" tabindex="-1" class="mt-1 text-2xl sm:text-4xl font-black">Resumen de su atención</h2>
+            </header>
+            <p id="resumen-estado" class="mt-4 text-lg font-semibold text-slate-700" role="status"></p>
+            <div id="resumen-datos" class="hidden mt-4 space-y-5 [overflow-wrap:anywhere]">
+                <dl class="grid gap-3 sm:grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div><dt class="font-bold text-slate-600">Número de atención</dt><dd id="resumen-id" class="font-mono font-bold"></dd></div>
+                    <div><dt class="font-bold text-slate-600">Fecha y hora</dt><dd id="resumen-fecha" class="font-bold"></dd></div>
+                </dl>
+                <section>
+                    <h3 class="text-lg font-black">Diagnóstico</h3>
+                    <p id="resumen-diagnostico" class="mt-1 whitespace-pre-wrap text-lg"></p>
+                </section>
+                <section class="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
+                    <h3 class="text-xl font-black text-blue-950">Receta e indicaciones</h3>
+                    <p id="resumen-receta" class="mt-2 whitespace-pre-wrap text-lg text-slate-900"></p>
+                </section>
+            </div>
+            <div id="resumen-acciones" class="mt-6 flex flex-wrap gap-3">
+                <button id="resumen-imprimir" type="button" onclick="window.print()" class="hidden rounded-xl bg-blue-800 px-5 py-3 text-lg font-bold text-white hover:bg-blue-900">Imprimir resumen</button>
+                <button type="button" onclick="location.reload()" class="rounded-xl border-2 border-slate-400 px-5 py-3 text-lg font-bold text-slate-900 hover:bg-slate-100">Salir y limpiar pantalla</button>
+            </div>
+        </section>
 
     </main>
 
@@ -184,10 +220,13 @@
         let recognition = null;
         let isListening = false;
         let isDerivando = false;
+        let enviandoRespuesta = false;
 
         let localStream = null;
         let peerConnection = null;
         let telemedicinaWS = null;
+        let llamadaTotem = null;
+        let accesoResumen = null;
 
         const rtcConfig = {
             iceServers: [
@@ -218,7 +257,7 @@
             recognition.interimResults = false;
 
             recognition.onresult = function(event) {
-                if (isDerivando) return;
+                if (isDerivando || enviandoRespuesta) return;
                 const text = event.results[0][0].transcript;
                 document.getElementById('user-msg').value = text;
                 stopMicUI();
@@ -236,7 +275,7 @@
         }
 
         function toggleVoiceRecognition() {
-            if (isDerivando) return;
+            if (isDerivando || enviandoRespuesta) return;
             if (!recognition) {
                 alert("El navegador del tótem no soporta entrada de voz o requiere permisos de micrófono.");
                 return;
@@ -316,17 +355,22 @@
                     return;
                 }
             } catch(err) {
-                console.error("Error enviando RUT inicial", err);
+                alert("No se pudo conectar con el servicio. Intente nuevamente.");
+                return;
             }
 
+            accesoResumen = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte =>
+                byte.toString(16).padStart(2, '0')
+            ).join('');
             document.getElementById('step-rut').classList.add('hidden');
             document.getElementById('step-triage').classList.remove('hidden');
+            document.getElementById('step-triage').scrollIntoView({ block: 'start' });
             document.getElementById('rut-status').innerHTML = `<i class="fa-solid fa-user-check text-emerald-600 mr-2"></i>RUT: ${document.getElementById('rut-input').value}`;
             hablarTexto("Hola, para ayudarle por favor hable por el micrófono o presione una de las opciones en pantalla.");
         }
 
         function selectQuickAnswer(answerText) {
-            if (isDerivando) return;
+            if (isDerivando || enviandoRespuesta) return;
             document.getElementById('user-msg').value = answerText;
             sendUserMessage();
         }
@@ -350,21 +394,26 @@
         }
 
         async function sendUserMessage() {
-            if (isDerivando) return;
+            if (isDerivando || enviandoRespuesta) return;
 
             const input = document.getElementById('user-msg');
             const text = input.value.trim();
             if (!text) return;
 
             const chatBox = document.getElementById('chat-box');
+            const estado = document.getElementById('chat-status');
+            enviandoRespuesta = true;
+            input.readOnly = true;
+            document.getElementById('btn-send').disabled = true;
+            estado.textContent = 'Procesando su respuesta…';
 
             const userBubble = document.createElement('div');
             userBubble.className = "flex gap-4 justify-end";
             userBubble.innerHTML = `
                 <div class="bg-slate-800 text-white p-4 md:p-5 rounded-3xl rounded-tr-none text-base md:text-xl font-bold max-w-[85%] shadow-sm">
-                    ${text}
                 </div>
             `;
+            userBubble.firstElementChild.textContent = text;
             chatBox.appendChild(userBubble);
             input.value = "";
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -380,56 +429,57 @@
                         rut: document.getElementById('rut-input').value || rutRaw, 
                         mensaje: text, 
                         paso: chatStep,
-                        historial: conversationHistory 
+                        historial: conversationHistory,
+                        acceso_resumen: accesoResumen
                     })
                 });
+                if (res.status === 409) {
+                    throw new Error('Ya hay una atención para este RUT. Solicite ayuda al personal.');
+                }
+                if (!res.ok) throw new Error('No se pudo enviar. Pulse Enviar para reintentar.');
                 const data = await res.json();
 
                 const aiBubble = document.createElement('div');
                 aiBubble.className = "flex gap-3 md:gap-4";
                 aiBubble.innerHTML = `
                     <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 shadow">IA</div>
-                    <div id="last-ai-msg" class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
-                        ${data.respuesta_ia}
+                    <div data-ai-message class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
                     </div>
                 `;
+                aiBubble.querySelector('[data-ai-message]').textContent = data.respuesta_ia;
                 chatBox.appendChild(aiBubble);
                 chatBox.scrollTop = chatBox.scrollHeight;
 
-                hablarTexto(data.respuesta_ia.replace(/<[^>]*>?/gm, ''));
-
-                updateQuickButtons(chatStep);
+                hablarTexto(data.respuesta_ia);
+                estado.textContent = '';
+                document.getElementById('quick-buttons').classList.add('hidden');
 
                 conversationHistory.push({ role: 'assistant', content: data.respuesta_ia });
 
-                if (data.siguiente_accion === 'DERIVAR_TELEMEDICINA') {
+                if (data.siguiente_accion === 'MOSTRAR_RESUMEN') {
+                    bloquearEntradasTriage();
+                    mostrarResumenAtencion();
+                } else if (data.siguiente_accion === 'DERIVAR_TELEMEDICINA') {
                     bloquearEntradasTriage();
                     setTimeout(() => {
                         document.getElementById('step-triage').classList.add('hidden');
                         document.getElementById('step-telemedicina').classList.remove('hidden');
+                        document.getElementById('step-telemedicina').scrollIntoView({ block: 'start' });
                         hablarTexto("Le estamos conectando en vivo con el doctor de telemedicina. Por favor mire a la pantalla.");
                         iniciarVideollamadaReal();
                     }, 2500);
                 }
 
             } catch (err) {
-                console.error("Error al conectar con la API clínica", err);
-            }
-        }
-
-        function updateQuickButtons(step) {
-            if (isDerivando) return;
-            const container = document.getElementById('quick-buttons');
-            if (step === 1) {
-                container.innerHTML = `
-                    <button onclick="selectQuickAnswer('Aumenta al toser o estornudar')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">Aumenta al toser o moverme</button>
-                    <button onclick="selectQuickAnswer('Es un dolor profundo y constante')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">Es constante y profundo</button>
-                `;
-            } else if (step === 2) {
-                container.innerHTML = `
-                    <button onclick="selectQuickAnswer('No tengo fiebre ni falta de aire')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">No tengo fiebre ni falta de aire</button>
-                    <button onclick="selectQuickAnswer('Sí tengo fiebre alta o cansancio')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">Sí tengo fiebre o cansancio</button>
-                `;
+                chatStep--;
+                conversationHistory.pop();
+                userBubble.remove();
+                input.value = text;
+                estado.textContent = err instanceof TypeError ? 'No se pudo enviar. Pulse Enviar para reintentar.' : err.message;
+            } finally {
+                enviandoRespuesta = false;
+                input.readOnly = false;
+                if (!isDerivando) document.getElementById('btn-send').disabled = false;
             }
         }
 
@@ -464,27 +514,38 @@
         }
 
         function hablarMensajeIA() {
-            const msgElement = document.getElementById('last-ai-msg');
+            const msgElement = [...document.querySelectorAll('[data-ai-message]')].at(-1);
             if (msgElement) {
                 hablarTexto(msgElement.innerText);
             }
         }
 
         async function iniciarVideollamadaReal() {
+            const llamada = new AbortController();
+            llamadaTotem = llamada;
             try {
+                let stream;
                 try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 } catch (errMedia) {
+                    if (llamada.signal.aborted) return;
                     console.warn("Fallback a solo video...", errMedia);
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 }
 
+                if (llamada.signal.aborted) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+                localStream = stream;
                 document.getElementById('totem-local-video').srcObject = localStream;
 
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 telemedicinaWS = new WebSocket(`${protocol}//${window.location.host}/ws/telemedicina/totem`);
                 peerConnection = new RTCPeerConnection(rtcConfig);
 
+                const conexion = peerConnection;
+                const socket = telemedicinaWS;
                 // Candidates ICE que llegan antes de tener la descripción remota
                 let pendingCandidates = [];
 
@@ -504,40 +565,118 @@
                     }
                 };
 
-                telemedicinaWS.onopen = async () => {
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    telemedicinaWS.send(JSON.stringify({ type: 'offer', offer: offer }));
+                socket.onopen = async () => {
+                    try {
+                        const offer = await conexion.createOffer();
+                        await conexion.setLocalDescription(offer);
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: 'offer', offer }));
+                        }
+                    } catch (err) {
+                        if (!llamada.signal.aborted) console.error("Error iniciando señalización WebRTC:", err);
+                    }
                 };
 
-                telemedicinaWS.onmessage = async (event) => {
+                socket.onmessage = async (event) => {
                     try {
                         const msg = JSON.parse(event.data);
                         if (msg.type === 'answer') {
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.answer));
+                            await conexion.setRemoteDescription(new RTCSessionDescription(msg.answer));
                             for (const c of pendingCandidates) {
-                                await peerConnection.addIceCandidate(c);
+                                await conexion.addIceCandidate(c);
                             }
                             pendingCandidates = [];
                         } else if (msg.type === 'candidate') {
                             const cand = new RTCIceCandidate(msg.candidate);
-                            if (peerConnection.remoteDescription) {
-                                await peerConnection.addIceCandidate(cand);
+                            if (conexion.remoteDescription) {
+                                await conexion.addIceCandidate(cand);
                             } else {
                                 pendingCandidates.push(cand);
                             }
                         } else if (msg.type === 'end') {
-                            alert("El médico ha finalizado la consulta.");
-                            location.reload();
+                            finalizarLlamadaTotem(false);
                         }
                     } catch (err) {
-                        console.error("Error procesando señalización WebRTC:", err);
+                        if (!llamada.signal.aborted) console.error("Error procesando señalización WebRTC:", err);
                     }
                 };
             } catch(e) {
+                if (llamada.signal.aborted) return;
                 console.error("Error iniciando cámara WebRTC:", e);
                 alert("Por favor permita el acceso a la cámara y al micrófono en los permisos de la aplicación o navegador.");
             }
+        }
+
+        function finalizarLlamadaTotem(notificarMedico) {
+            llamadaTotem?.abort();
+            llamadaTotem = null;
+            if (telemedicinaWS) {
+                telemedicinaWS.onmessage = null;
+                if (notificarMedico && telemedicinaWS.readyState === WebSocket.OPEN) {
+                    telemedicinaWS.send(JSON.stringify({ type: 'end' }));
+                }
+                telemedicinaWS.close();
+                telemedicinaWS = null;
+            }
+            peerConnection?.close();
+            peerConnection = null;
+            localStream?.getTracks().forEach(track => track.stop());
+            localStream = null;
+            document.getElementById('totem-local-video').srcObject = null;
+            document.getElementById('doctor-remote-video').srcObject = null;
+            window.speechSynthesis?.cancel();
+            mostrarResumenAtencion();
+        }
+
+        function mostrarResumenAtencion() {
+            document.getElementById('step-triage').classList.add('hidden');
+            document.getElementById('step-telemedicina').classList.add('hidden');
+            document.getElementById('rut-status').classList.add('hidden');
+            document.body.classList.add('mostrando-resumen');
+            document.getElementById('step-resumen').classList.remove('hidden');
+            document.getElementById('resumen-titulo').focus();
+            document.getElementById('step-resumen').scrollIntoView({ block: 'start' });
+            consultarResumenAtencion();
+        }
+
+        async function consultarResumenAtencion() {
+            const estado = document.getElementById('resumen-estado');
+            if (!accesoResumen) {
+                estado.textContent = 'El resumen de esta atención no está disponible en el tótem.';
+                return;
+            }
+
+            estado.textContent ||= 'La llamada terminó. Estamos esperando que el profesional guarde su atención.';
+            try {
+                const res = await fetch('/api/v1/resumen-atencion', {
+                    headers: { Authorization: 'Bearer ' + accesoResumen },
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(8000),
+                });
+                if (res.status === 202) {
+                    estado.textContent = 'La llamada terminó. Estamos esperando que el profesional guarde su atención.';
+                } else if (res.ok) {
+                    const datos = await res.json();
+                    const fecha = new Date(datos.fecha);
+                    document.getElementById('resumen-id').textContent = datos.id;
+                    document.getElementById('resumen-fecha').textContent = Number.isNaN(fecha.getTime())
+                        ? datos.fecha : fecha.toLocaleString('es-CL');
+                    document.getElementById('resumen-diagnostico').textContent = datos.diagnostico || 'Sin diagnóstico registrado.';
+                    document.getElementById('resumen-receta').textContent = datos.receta || 'El profesional no registró una receta ni indicaciones.';
+                    document.getElementById('resumen-datos').classList.remove('hidden');
+                    document.getElementById('resumen-imprimir').classList.remove('hidden');
+                    estado.textContent = 'Su resumen está disponible.';
+                    return;
+                } else if (res.status === 401 || res.status === 404) {
+                    estado.textContent = 'No se encontró el resumen. Solicite ayuda al personal.';
+                    return;
+                } else {
+                    throw new Error();
+                }
+            } catch (error) {
+                estado.textContent = 'No pudimos consultar el resumen. Reintentando…';
+            }
+            setTimeout(consultarResumenAtencion, 3000);
         }
     </script>
 </body>

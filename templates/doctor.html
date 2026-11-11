@@ -16,14 +16,29 @@
         .btn-interactive { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
         .btn-interactive:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15); }
         .btn-interactive:active { transform: scale(0.97); }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+        :focus-visible { outline: 2px solid #059669; outline-offset: 3px; }
+        .call-layout[data-ended] { grid-template-columns: minmax(0, 1fr); }
+        .call-layout[data-ended] .call-video { display: none; }
+        .call-layout[data-ended] .call-details { grid-column: auto; width: min(100%, 48rem); margin-inline: auto; }
+        @media (max-width: 639px) {
+            table.patient-table { display: block; min-width: 0; }
+            .patient-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+            .patient-table tbody, .patient-table tr { display: block; }
+            .patient-table tr { padding: .5rem 0; }
+            .patient-table td[data-label] {
+                display: grid;
+                grid-template-columns: minmax(5.5rem, 1fr) minmax(0, 1.65fr);
+                gap: .75rem;
+                padding: .5rem .25rem;
+            }
+            .patient-table td[data-label]::before { content: attr(data-label); font-weight: 700; color: #475569; }
+        }
     </style>
 </head>
-<body class="min-h-screen md:h-screen flex flex-col justify-between select-none md:overflow-hidden">
+<body class="min-h-screen flex flex-col">
 
     <!-- LOGIN -->
-    <div id="screen-login" class="min-h-screen md:h-full w-full flex flex-col md:flex-row">
+    <div id="screen-login" class="min-h-screen w-full flex flex-col md:flex-row">
         <div class="w-full md:w-7/12 login-hero-bg flex flex-col justify-between p-6 md:p-12 text-white">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-xl font-black shadow-lg">
@@ -67,46 +82,25 @@
     </div>
 
     <!-- PORTAL PRINCIPAL -->
-    <div id="screen-portal" class="hidden min-h-screen md:h-full flex flex-col justify-between">
-        <header class="bg-slate-900 text-white px-4 md:px-6 py-3 flex justify-between items-center shadow">
+    <div id="screen-portal" class="hidden min-h-screen flex flex-col justify-between">
+        <header class="bg-slate-900 text-white px-4 md:px-6 py-3 flex flex-wrap justify-between items-center gap-3 shadow">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-sm font-bold">
                     <i class="fa-solid fa-stethoscope"></i>
                 </div>
                 <span class="text-xs font-extrabold tracking-widest uppercase">Portal Clínico de Telemedicina</span>
             </div>
-            <div class="flex items-center gap-2 md:gap-4 text-xs font-bold">
+            <div class="flex flex-wrap items-center gap-3 md:gap-4 text-xs font-bold">
                 <button onclick="switchTab('queue')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive"><i class="fa-solid fa-users"></i> Cola (<span id="top-badge-queue">0</span>)</button>
                 <button onclick="switchTab('history')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive"><i class="fa-solid fa-folder"></i> Historial</button>
                 <button onclick="cerrarSesion()" class="text-rose-400 hover:text-rose-300 transition ml-2 btn-interactive"><i class="fa-solid fa-power-off"></i> Salir</button>
             </div>
         </header>
 
-        <div class="flex-1 p-4 md:p-6 overflow-y-auto custom-scroll">
+        <div class="flex-1 p-4 md:p-6">
             <div class="max-w-7xl mx-auto space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button onclick="switchTab('queue')" class="bg-amber-100 border-2 border-amber-300 p-4 rounded-xl flex items-center gap-4 text-left shadow-sm">
-                        <div class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
-                            <i class="fa-solid fa-user-clock"></i>
-                        </div>
-                        <div>
-                            <span class="text-[10px] font-extrabold text-amber-800 uppercase block">Prioritario</span>
-                            <span class="text-xs font-black text-slate-900">Cola de Espera Activa</span>
-                        </div>
-                    </button>
-                    <button onclick="switchTab('history')" class="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-4 text-left shadow-sm">
-                        <div class="w-10 h-10 bg-slate-100 text-slate-700 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
-                            <i class="fa-solid fa-folder-open"></i>
-                        </div>
-                        <div>
-                            <span class="text-[10px] font-extrabold text-slate-500 uppercase block">Registros</span>
-                            <span class="text-xs font-black text-slate-900">Historial de Atenciones</span>
-                        </div>
-                    </button>
-                </div>
-
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div class="lg:col-span-4 space-y-4">
+                    <aside class="hidden lg:block lg:col-span-4">
                         <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
                             <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
                                 <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center text-xl font-bold">
@@ -123,29 +117,30 @@
                                 <div class="flex justify-between"><span class="font-bold text-slate-500">Estado:</span> <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-black text-[10px]">ACTIVO EN LÍNEA</span></div>
                             </div>
                         </div>
-                    </div>
+                    </aside>
 
-                    <div class="lg:col-span-8">
+                    <div class="lg:col-span-8 min-w-0">
                         <div id="tab-queue" class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm flex flex-col space-y-4">
                             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 class="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
                                         <i class="fa-solid fa-list-check text-emerald-600"></i> Cola de Pacientes en Espera
                                     </h3>
-                                    <p class="text-[11px] md:text-xs text-slate-500">Seleccione un paciente para revisar su prediagnóstico e instrumentos clínicos.</p>
+                                    <p class="text-[11px] md:text-xs text-slate-500">Asigne la prioridad y seleccione un paciente para atenderlo.</p>
                                 </div>
                                 <button onclick="actualizarCola()" class="px-3 py-1.5 md:px-3.5 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 btn-interactive flex items-center gap-1.5">
                                     <i class="fa-solid fa-arrows-rotate"></i> Actualizar
                                 </button>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-xs text-slate-700 min-w-[500px]">
+                            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Cola de pacientes">
+                                <table class="patient-table w-full text-left text-xs text-slate-700 min-w-[500px]">
                                     <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
                                         <tr>
                                             <th class="p-3 rounded-l-xl">Hora</th>
                                             <th class="p-3">RUT Paciente</th>
                                             <th class="p-3">Motivo / Síntomas</th>
-                                            <th class="p-3">Prediagnóstico IA</th>
+                                            <th class="p-3">Resumen de triage</th>
+                                            <th class="p-3">Prioridad de triage</th>
                                             <th class="p-3 text-center rounded-r-xl">Acción</th>
                                         </tr>
                                     </thead>
@@ -160,14 +155,15 @@
                                     <i class="fa-solid fa-folder-closed text-emerald-600"></i> Historial General de Atenciones
                                 </h3>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-left text-xs text-slate-700 min-w-[500px]">
+                            <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Historial de atenciones">
+                                <table class="patient-table w-full text-left text-xs text-slate-700 min-w-[500px]">
                                     <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
                                         <tr>
                                             <th class="p-3 rounded-l-xl">Código</th>
                                             <th class="p-3">Fecha/Hora</th>
                                             <th class="p-3">RUT</th>
                                             <th class="p-3">Diagnóstico</th>
+                                            <th class="p-3">Receta e indicaciones</th>
                                             <th class="p-3 rounded-r-xl">Estado</th>
                                         </tr>
                                     </thead>
@@ -185,7 +181,7 @@
     </div>
 
     <!-- PRE-CONSULTA -->
-    <div id="screen-patient-data" class="hidden min-h-screen md:h-full flex flex-col justify-between bg-slate-100 p-4 md:p-6 overflow-y-auto">
+    <div id="screen-patient-data" class="hidden min-h-screen flex flex-col justify-between bg-slate-100 p-4 md:p-6 overflow-y-auto">
         <div class="max-w-4xl mx-auto w-full space-y-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div class="flex items-center gap-3">
@@ -250,7 +246,7 @@
                         </div>
                     </div>
                     <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-1">
-                        <span class="font-bold text-amber-900 block text-xs uppercase"><i class="fa-solid fa-robot mr-1"></i> Prediagnóstico IA Sugerido</span>
+                        <span class="font-bold text-amber-900 block text-xs uppercase"><i class="fa-solid fa-robot mr-1"></i> Resumen de triage</span>
                         <span id="inst-diag" class="font-bold text-slate-900 text-xs">--</span>
                     </div>
                 </div>
@@ -259,20 +255,25 @@
     </div>
 
     <!-- SALA DE TELEMEDICINA -->
-    <div id="screen-telemed" class="hidden min-h-screen md:h-full flex flex-col justify-between p-4 md:p-6">
-        <header class="bg-slate-900 text-white px-4 md:px-6 py-3 rounded-2xl flex justify-between items-center shadow-lg gap-2">
+    <div id="screen-telemed" class="hidden min-h-screen flex flex-col justify-between p-4 md:p-6">
+        <header class="sticky top-0 z-10 bg-slate-900 text-white px-4 md:px-6 py-3 rounded-2xl flex flex-wrap justify-between items-center shadow-lg gap-2">
             <div class="flex items-center gap-3">
                 <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span class="text-xs font-black tracking-wider uppercase">Sesión Activa</span>
+                <span id="call-status" class="text-xs font-black tracking-wider uppercase" role="status">Sesión activa</span>
             </div>
-            <button onclick="finalizarConsulta()" class="px-4 md:px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs btn-interactive flex items-center gap-2">
-                <i class="fa-solid fa-phone-slash"></i> Finalizar Consulta
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" id="hang-up-doctor" onclick="colgarLlamadaDoctor()" class="rounded-xl border border-slate-500 px-3 py-2 text-xs font-bold hover:bg-slate-800">
+                    Colgar
+                </button>
+                <button type="button" id="finish-consultation" onclick="finalizarConsulta()" class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
+                    Guardar y finalizar
+                </button>
+            </div>
         </header>
 
-        <div class="flex-1 my-4 md:my-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
-            <div class="lg:col-span-8 relative bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl min-h-[300px] md:min-h-[400px] flex items-center justify-center">
-                <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+        <div id="call-layout" class="call-layout flex-1 my-4 md:my-6 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
+            <div class="call-video lg:col-span-8 min-w-0 relative bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl aspect-video max-h-[65dvh] flex items-center justify-center">
+                <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain"></video>
                 <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-bold text-white border border-slate-700 flex items-center gap-2">
                     <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span>Cámara Paciente</span>
@@ -283,11 +284,10 @@
                 </div>
             </div>
 
-            <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-4 md:p-6 shadow-sm flex flex-col justify-between overflow-y-auto custom-scroll space-y-4">
+            <div class="call-details lg:col-span-4 min-w-0 bg-white border border-slate-200 rounded-3xl p-4 md:p-6 shadow-sm space-y-4 break-words">
                 <div class="space-y-4">
                     <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
                         <h4 class="font-black text-slate-900 text-sm uppercase"><i class="fa-solid fa-id-card text-emerald-600 mr-1.5"></i> Resumen del Usuario</h4>
-                        <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded">En Línea</span>
                     </div>
 
                     <div class="space-y-3 text-xs">
@@ -313,15 +313,22 @@
                         </div>
 
                         <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
-                            <span class="text-[10px] font-bold text-amber-900 block uppercase">Prediagnóstico IA</span>
+                            <span class="text-[10px] font-bold text-amber-900 block uppercase">Resumen de triage</span>
                             <p id="sum-diag" class="font-bold text-slate-900 mt-0.5 text-xs">--</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="pt-2 border-t border-slate-100">
-                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Notas Médicas / Receta Rápida</label>
-                    <textarea placeholder="Escriba indicaciones o fármacos..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-600 resize-none h-20"></textarea>
+                <div class="pt-4 border-t border-slate-200 space-y-3">
+                    <div>
+                        <label for="consulta-diagnostico" class="block text-xs font-bold text-slate-700 mb-1">Diagnóstico</label>
+                        <input id="consulta-diagnostico" maxlength="1000" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                    </div>
+                    <div>
+                        <label for="consulta-receta" class="block text-xs font-bold text-slate-700 mb-1">Receta e indicaciones</label>
+                        <textarea id="consulta-receta" maxlength="4000" rows="4" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm resize-y"></textarea>
+                    </div>
+                    <p id="consulta-error" class="text-sm text-rose-700 font-semibold" role="alert"></p>
                 </div>
             </div>
         </div>
@@ -333,6 +340,13 @@
         let localStream = null;
         let peerConnection = null;
         let doctorWS = null;
+        let llamadaDoctor = null;
+        const nivelesTriage = [
+            [1, 'Alta'],
+            [2, 'Preferente'],
+            [3, 'Habitual'],
+            [4, 'Sin clasificar'],
+        ];
 
         const rtcConfig = {
             iceServers: [
@@ -355,19 +369,29 @@
             ]
         };
 
+        const sessionKey = 'totem-medico:portal-session';
+
         document.addEventListener('DOMContentLoaded', () => {
-            actualizarCola();
-            cargarHistorial();
+            if (localStorage.getItem(sessionKey) === 'active') abrirPortal();
         });
 
         function realizarLogin(e) {
             e.preventDefault();
+            localStorage.setItem(sessionKey, 'active');
+            abrirPortal();
+        }
+
+        function abrirPortal() {
             document.getElementById('screen-login').classList.add('hidden');
             document.getElementById('screen-portal').classList.remove('hidden');
             actualizarCola();
+            cargarHistorial();
         }
 
-        function cerrarSesion() { location.reload(); }
+        function cerrarSesion() {
+            localStorage.removeItem(sessionKey);
+            location.reload();
+        }
 
         function switchTab(tab) {
             document.getElementById('tab-queue').classList.add('hidden');
@@ -399,7 +423,7 @@
             document.getElementById('top-badge-queue').innerText = lista.length;
 
             if (lista.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 italic">No hay pacientes en espera.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500">No hay pacientes en espera.</td></tr>`;
                 return;
             }
 
@@ -408,16 +432,52 @@
                 tr.className = "hover:bg-slate-50 transition";
                 const sintomaPrincipal = Array.isArray(p.sintomas) ? (p.sintomas[0] || 'En evaluación') : (p.sintomas || 'En evaluación');
                 tr.innerHTML = `
-                    <td class="p-3 font-mono text-slate-500">${p.hora || 'Ahora'}</td>
-                    <td class="p-3 font-mono font-bold text-emerald-700">${p.rut}</td>
-                    <td class="p-3">${sintomaPrincipal}</td>
-                    <td class="p-3 font-semibold text-slate-900">${p.prediagnostico || 'En evaluación'}</td>
+                    <td class="p-3 font-mono text-slate-500"></td>
+                    <td class="p-3 font-mono font-bold text-emerald-700"></td>
+                    <td class="p-3 break-words [overflow-wrap:anywhere]"></td>
+                    <td class="p-3 font-semibold text-slate-900"></td>
+                    <td class="p-3"></td>
                     <td class="p-3 text-center">
                         <button onclick="verDatosPaciente(${index})" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs btn-interactive shadow flex items-center gap-1.5 mx-auto">
                             <i class="fa-solid fa-file-medical"></i> Atender
                         </button>
                     </td>
                 `;
+                tr.cells[0].textContent = p.hora || 'Ahora';
+                tr.cells[1].textContent = p.rut;
+                tr.cells[2].textContent = sintomaPrincipal;
+                tr.cells[3].textContent = p.prediagnostico || 'En evaluación';
+
+                const prioridad = document.createElement('select');
+                prioridad.className = 'rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold';
+                prioridad.setAttribute('aria-label', 'Prioridad de triage para ' + p.rut);
+                for (const [valor, etiqueta] of nivelesTriage) {
+                    prioridad.add(new Option(etiqueta, valor));
+                }
+                prioridad.value = p.prioridad;
+                prioridad.addEventListener('change', async () => {
+                    prioridad.disabled = true;
+                    try {
+                        const res = await fetch('/api/v1/cola-pacientes/' + encodeURIComponent(p.id) + '/prioridad', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prioridad: Number(prioridad.value) }),
+                        });
+                        if (!res.ok) throw new Error('No se pudo guardar la prioridad.');
+                        await actualizarCola();
+                        document.getElementById(prioridad.id)?.focus();
+                    } catch (err) {
+                        prioridad.value = p.prioridad;
+                        alert(err.message);
+                    } finally {
+                        prioridad.disabled = false;
+                    }
+                });
+                prioridad.id = 'triage-' + p.id;
+                tr.cells[4].appendChild(prioridad);
+                ['Hora', 'RUT', 'Síntomas', 'Triage', 'Prioridad'].forEach((etiqueta, i) => {
+                    tr.cells[i].dataset.label = etiqueta;
+                });
                 tbody.appendChild(tr);
             });
         }
@@ -428,7 +488,7 @@
 
             document.getElementById('data-rut').innerText = pacienteActual.rut;
             document.getElementById('data-nombre').innerText = pacienteActual.nombre || 'Paciente Tótem';
-            document.getElementById('data-edad').innerText = pacienteActual.edad || '30 años / Paciente';
+            document.getElementById('data-edad').innerText = pacienteActual.edad || 'Sin informar';
             
             const ul = document.getElementById('data-sintomas');
             ul.innerHTML = "";
@@ -439,15 +499,16 @@
                 ul.appendChild(li);
             });
 
-            const inst = pacienteActual.instrumentos || { pa: '120/80 mmHg', fc: '80 lpm', temp: '37.0 °C', sat: '98%' };
-            document.getElementById('inst-pa').innerText = inst.pa || '120/80 mmHg';
-            document.getElementById('inst-fc').innerText = inst.fc || '80 lpm';
-            document.getElementById('inst-temp').innerText = inst.temp || '37.0 °C';
-            document.getElementById('inst-sat').innerText = inst.sat || '98%';
+            const inst = pacienteActual.instrumentos || {};
+            document.getElementById('inst-pa').innerText = inst.pa || '—';
+            document.getElementById('inst-fc').innerText = inst.fc || '—';
+            document.getElementById('inst-temp').innerText = inst.temp || '—';
+            document.getElementById('inst-sat').innerText = inst.sat || '—';
             document.getElementById('inst-diag').innerText = pacienteActual.prediagnostico || 'En evaluación';
 
             document.getElementById('screen-portal').classList.add('hidden');
             document.getElementById('screen-patient-data').classList.remove('hidden');
+            window.scrollTo(0, 0);
         }
 
         function volverAlPortal() {
@@ -461,11 +522,11 @@
             document.getElementById('sum-nombre').innerText = pacienteActual.nombre || 'Paciente Tótem';
             document.getElementById('sum-rut').innerText = pacienteActual.rut;
             
-            const inst = pacienteActual.instrumentos || { pa: '120/80 mmHg', fc: '80 lpm', temp: '37.0 °C', sat: '98%' };
-            document.getElementById('sum-pa').innerText = inst.pa || '120/80 mmHg';
-            document.getElementById('sum-fc').innerText = inst.fc || '80 lpm';
-            document.getElementById('sum-temp').innerText = inst.temp || '37.0 °C';
-            document.getElementById('sum-sat').innerText = inst.sat || '98%';
+            const inst = pacienteActual.instrumentos || {};
+            document.getElementById('sum-pa').innerText = inst.pa || '—';
+            document.getElementById('sum-fc').innerText = inst.fc || '—';
+            document.getElementById('sum-temp').innerText = inst.temp || '—';
+            document.getElementById('sum-sat').innerText = inst.sat || '—';
 
             const sintomas = Array.isArray(pacienteActual.sintomas) ? pacienteActual.sintomas.join(', ') : pacienteActual.sintomas;
             document.getElementById('sum-sintomas').innerText = sintomas || 'Sin síntomas reportados';
@@ -473,6 +534,13 @@
 
             document.getElementById('screen-patient-data').classList.add('hidden');
             document.getElementById('screen-telemed').classList.remove('hidden');
+            document.getElementById('call-status').textContent = 'Sesión activa';
+            document.getElementById('hang-up-doctor').classList.remove('hidden');
+            document.getElementById('call-layout').removeAttribute('data-ended');
+            document.getElementById('consulta-diagnostico').value = '';
+            document.getElementById('consulta-receta').value = '';
+            document.getElementById('consulta-error').textContent = '';
+            window.scrollTo(0, 0);
 
             iniciarWebRTCDoctor();
         }
@@ -490,16 +558,29 @@
         function renderizarHistorial(lista) {
             const tbody = document.getElementById('history-table-body');
             tbody.innerHTML = "";
+            if (!lista.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Aún no hay atenciones registradas.</td></tr>';
+                return;
+            }
             lista.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition";
-                tr.innerHTML = `
-                    <td class="p-3 font-mono text-slate-500">${item.id}</td>
-                    <td class="p-3 font-mono text-slate-500">${item.fecha}</td>
-                    <td class="p-3 font-mono font-bold text-emerald-700">${item.rut}</td>
-                    <td class="p-3 font-semibold text-slate-900">${item.diagnostico}</td>
-                    <td class="p-3"><span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-bold text-[10px]">${item.estado}</span></td>
-                `;
+                tr.className = 'hover:bg-slate-50 transition align-top';
+                const fecha = new Date(item.fecha);
+                const valores = [
+                    item.id,
+                    Number.isNaN(fecha.getTime()) ? item.fecha : fecha.toLocaleString('es-CL'),
+                    item.rut,
+                    item.diagnostico,
+                    item.receta,
+                    item.estado,
+                ];
+                const etiquetas = ['Código', 'Fecha y hora', 'RUT', 'Diagnóstico', 'Receta', 'Estado'];
+                valores.forEach((valor, indice) => {
+                    const celda = tr.insertCell();
+                    celda.className = 'p-3 whitespace-pre-wrap [overflow-wrap:anywhere]';
+                    celda.dataset.label = etiquetas[indice];
+                    celda.textContent = valor || '—';
+                });
                 tbody.appendChild(tr);
             });
         }
@@ -522,14 +603,23 @@
         }
 
         async function iniciarWebRTCDoctor() {
+            const llamada = new AbortController();
+            llamadaDoctor = llamada;
             try {
-                localStream = await obtenerMedios();
+                const stream = await obtenerMedios();
+                if (llamada.signal.aborted) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+                localStream = stream;
                 document.getElementById('localVideo').srcObject = localStream;
 
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 doctorWS = new WebSocket(`${protocol}//${window.location.host}/ws/telemedicina/doctor`);
                 peerConnection = new RTCPeerConnection(rtcConfig);
 
+                const conexion = peerConnection;
+                const socket = doctorWS;
                 let pendingCandidates = [];
 
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -548,48 +638,103 @@
                     }
                 };
 
-                doctorWS.onmessage = async (event) => {
+                socket.onmessage = async (event) => {
                     try {
                         const msg = JSON.parse(event.data);
-                        if (msg.type === 'offer') {
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer));
+                        if (msg.type === 'end') {
+                            cerrarLlamadaDoctor(false);
+                            document.getElementById('call-status').textContent = 'El paciente finalizó la llamada';
+                        } else if (msg.type === 'offer') {
+                            await conexion.setRemoteDescription(new RTCSessionDescription(msg.offer));
                             for (const c of pendingCandidates) {
-                                await peerConnection.addIceCandidate(c);
+                                await conexion.addIceCandidate(c);
                             }
                             pendingCandidates = [];
-                            const answer = await peerConnection.createAnswer();
-                            await peerConnection.setLocalDescription(answer);
-                            doctorWS.send(JSON.stringify({ type: 'answer', answer: answer }));
+                            const answer = await conexion.createAnswer();
+                            await conexion.setLocalDescription(answer);
+                            if (socket.readyState === WebSocket.OPEN) {
+                                socket.send(JSON.stringify({ type: 'answer', answer }));
+                            }
                         } else if (msg.type === 'candidate') {
                             const cand = new RTCIceCandidate(msg.candidate);
-                            if (peerConnection.remoteDescription) {
-                                await peerConnection.addIceCandidate(cand);
+                            if (conexion.remoteDescription) {
+                                await conexion.addIceCandidate(cand);
                             } else {
                                 pendingCandidates.push(cand);
                             }
                         }
                     } catch (err) {
-                        console.error("Error procesando señalización WebRTC:", err);
+                        if (!llamada.signal.aborted) console.error("Error procesando señalización WebRTC:", err);
                     }
                 };
             } catch(e) {
+                if (llamada.signal.aborted) return;
                 console.error("Error iniciando cámara WebRTC del doctor:", e);
                 alert("Verifique los permisos de cámara y micrófono en los ajustes del navegador.");
             }
         }
 
-        function finalizarConsulta() {
-            if (doctorWS && doctorWS.readyState === WebSocket.OPEN) {
-                doctorWS.send(JSON.stringify({ type: 'end' }));
-                doctorWS.close();
-            }
-            if (peerConnection) peerConnection.close();
-            if (localStream) localStream.getTracks().forEach(t => t.stop());
+        async function finalizarConsulta() {
+            const boton = document.getElementById('finish-consultation');
+            if (!pacienteActual || boton.disabled) return;
+            const diagnostico = document.getElementById('consulta-diagnostico');
+            const receta = document.getElementById('consulta-receta');
+            const error = document.getElementById('consulta-error');
+            boton.disabled = diagnostico.disabled = receta.disabled = true;
+            error.textContent = '';
 
-            alert("Consulta finalizada y registrada correctamente.");
-            document.getElementById('screen-telemed').classList.add('hidden');
-            document.getElementById('screen-portal').classList.remove('hidden');
-            actualizarCola();
+            try {
+                const res = await fetch('/api/v1/cola-pacientes/' + encodeURIComponent(pacienteActual.id) + '/finalizar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ diagnostico: diagnostico.value, receta: receta.value }),
+                });
+                if (res.status === 409) {
+                    error.textContent = 'La atención ya se guardó con otros datos. Revise el historial.';
+                    error.scrollIntoView({ block: 'nearest' });
+                    return;
+                }
+                if (!res.ok) throw new Error();
+
+                cerrarLlamadaDoctor(true);
+                pacienteActual = null;
+                document.getElementById('screen-telemed').classList.add('hidden');
+                document.getElementById('screen-portal').classList.remove('hidden');
+                switchTab('history');
+                actualizarCola();
+                window.scrollTo(0, 0);
+            } catch (err) {
+                error.textContent = 'No se pudo guardar la atención. Intente nuevamente.';
+                error.scrollIntoView({ block: 'nearest' });
+            } finally {
+                boton.disabled = diagnostico.disabled = receta.disabled = false;
+            }
+        }
+
+        function colgarLlamadaDoctor() {
+            cerrarLlamadaDoctor(true);
+            document.getElementById('call-status').textContent = 'Llamada finalizada';
+        }
+
+        function cerrarLlamadaDoctor(notificarPaciente) {
+            document.getElementById('hang-up-doctor').classList.add('hidden');
+            document.getElementById('call-layout').setAttribute('data-ended', '');
+            llamadaDoctor?.abort();
+            llamadaDoctor = null;
+            if (doctorWS) {
+                doctorWS.onmessage = null;
+                if (notificarPaciente && doctorWS.readyState === WebSocket.OPEN) {
+                    doctorWS.send(JSON.stringify({ type: 'end' }));
+                }
+                doctorWS.close();
+                doctorWS = null;
+            }
+            peerConnection?.close();
+            peerConnection = null;
+            localStream?.getTracks().forEach(track => track.stop());
+            localStream = null;
+            document.getElementById('localVideo').srcObject = null;
+            document.getElementById('remoteVideo').srcObject = null;
         }
     </script>
 </body>
