@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tótem Médico Inteligente Senior</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #0f172a; }
+        .card-white { background: #ffffff; border: 2px solid #cbd5e1; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
+        .chat-scroll::-webkit-scrollbar { width: 8px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 4px; }
+        
+        .text-senior { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+        
+        .mic-active {
+            animation: pulse-red 1.5s infinite;
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+            border-color: #b91c1c !important;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen md:h-screen flex flex-col justify-between p-4 md:p-6 select-none bg-slate-100 overflow-y-auto md:overflow-hidden">
+
+    <!-- Encabezado Senior -->
+    <header id="main-header" class="flex flex-col sm:flex-row justify-between items-center card-white p-4 md:p-5 rounded-2xl gap-4">
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+            <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-700 text-white rounded-xl flex items-center justify-center font-bold text-xl md:text-2xl shadow-md shrink-0">
+                <i class="fa-solid fa-user-doctor"></i>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Tótem Médico de Salud</h1>
+                <p class="text-xs md:text-sm text-blue-700 font-bold">Consulta Médica & Triage Asistido</p>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+            <button onclick="toggleSeniorMode()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-4 py-2.5 md:px-5 md:py-3 rounded-xl border-2 border-amber-600 shadow-md transition flex items-center gap-2 text-sm md:text-base">
+                <i class="fa-solid fa-eye text-lg md:text-xl"></i>
+                <span id="btn-text-size">Aumentar Letra</span>
+            </button>
+            <div id="rut-status" class="text-sm md:text-base font-bold text-slate-800 bg-slate-200 px-4 py-2.5 md:px-5 md:py-3 rounded-xl border-2 border-slate-300">
+                <i class="fa-solid fa-id-card text-blue-700 mr-2"></i>Esperando RUT...
+            </div>
+        </div>
+    </header>
+
+    <!-- Área Principal -->
+    <main class="flex-1 my-4 md:my-6 flex flex-col justify-center items-center relative">
+
+        <!-- PANTALLA 1: INGRESO DE RUT -->
+        <div id="step-rut" class="card-white p-6 md:p-8 rounded-3xl w-full max-w-lg text-center my-auto">
+            <div class="w-16 h-16 md:w-20 md:h-20 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4 border-2 border-blue-300">
+                <i class="fa-solid fa-hand-pointer text-3xl md:text-4xl"></i>
+            </div>
+            <h2 id="title-rut" class="text-2xl md:text-3xl font-black text-slate-900 mb-1 md:mb-2">¡Bienvenido!</h2>
+            <p id="desc-rut" class="text-slate-700 text-base md:text-lg font-semibold mb-4 md:mb-6">Presione su RUT en los botones de abajo:</p>
+
+            <input type="text" id="rut-input" placeholder="12.345.678-K" 
+                   oninput="handleKeyboardInput(this)"
+                   class="w-full text-center text-2xl md:text-4xl font-mono tracking-widest py-3 md:py-4 mb-4 md:mb-6 bg-slate-50 border-4 border-blue-600 rounded-2xl text-blue-950 font-black focus:outline-none">
+
+            <div class="grid grid-cols-3 gap-2.5 md:gap-4 mb-4 md:mb-6">
+                <button onclick="pressNum('1')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">1</button>
+                <button onclick="pressNum('2')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">2</button>
+                <button onclick="pressNum('3')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">3</button>
+                <button onclick="pressNum('4')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">4</button>
+                <button onclick="pressNum('5')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">5</button>
+                <button onclick="pressNum('6')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">6</button>
+                <button onclick="pressNum('7')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">7</button>
+                <button onclick="pressNum('8')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">8</button>
+                <button onclick="pressNum('9')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">9</button>
+                <button onclick="pressNum('K')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-blue-700 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">K</button>
+                <button onclick="pressNum('0')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">0</button>
+                <button onclick="clearRut()" class="py-3.5 md:py-5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-black text-lg md:text-xl rounded-2xl border-2 border-rose-300 transition active:scale-95">Borrar</button>
+            </div>
+
+            <button onclick="validateAndStart()" class="w-full py-4 md:py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xl md:text-2xl rounded-2xl shadow-xl transition active:scale-98">
+                <i class="fa-solid fa-circle-check mr-2"></i> INGRESAR AHORA
+            </button>
+        </div>
+
+        <!-- PANTALLA 2: CHATBOT ACCESIBLE -->
+        <div id="step-triage" class="hidden w-full max-w-5xl card-white p-4 md:p-8 rounded-3xl my-auto">
+            <div class="flex flex-col justify-between min-h-[480px] md:h-[560px]">
+                <div>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-200 pb-3 md:pb-4 mb-4 gap-2">
+                        <h3 class="text-lg md:text-xl font-black text-slate-900 flex items-center gap-3">
+                            <i class="fa-solid fa-robot text-blue-700 text-2xl md:text-3xl"></i> Asistente Médico Virtual
+                        </h3>
+                        <button id="btn-tts" onclick="hablarMensajeIA()" class="bg-blue-100 hover:bg-blue-200 text-blue-900 font-extrabold px-4 py-2 md:px-5 md:py-3 rounded-xl text-sm md:text-base flex items-center gap-2 border-2 border-blue-300">
+                            <i class="fa-solid fa-volume-high text-lg md:text-xl"></i> Repetir en Voz Alta
+                        </button>
+                    </div>
+
+                    <div id="chat-box" class="space-y-4 h-[250px] md:h-[300px] overflow-y-auto chat-scroll pr-3">
+                        <div class="flex gap-3 md:gap-4">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 shadow">IA</div>
+                            <div id="last-ai-msg" class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
+                                Hola, para ayudarle por favor hable por el micrófono o presione una de las opciones: <strong>¿Qué síntoma o molestia principal tiene hoy?</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t-2 border-slate-200">
+                    <p class="text-sm md:text-base font-bold text-slate-700 mb-3">Seleccione una opción o responda hablando:</p>
+                    
+                    <div id="quick-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-4">
+                        <button onclick="selectQuickAnswer('Me duele la cabeza')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-extrabold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
+                            🤕 Me duele la cabeza
+                        </button>
+                        <button onclick="selectQuickAnswer('Me duele la garganta y tengo tos')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
+                            🗣️ Dolor de garganta / Tos
+                        </button>
+                        <button onclick="selectQuickAnswer('Siento molestia en el pecho')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
+                            🫀 Molestia en el pecho
+                        </button>
+                        <button onclick="selectQuickAnswer('Tengo dolor del cuerpo o malestar')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
+                            🦴 Malestar general / Cuerpo
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                        <button id="btn-mic" onclick="toggleVoiceRecognition()" 
+                                class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 md:py-4 rounded-2xl font-black text-base md:text-lg flex items-center justify-center gap-3 border-2 border-rose-700 shadow-md transition active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
+                            <i class="fa-solid fa-microphone text-xl md:text-2xl"></i>
+                            <span id="mic-text">Hablar por Micrófono</span>
+                        </button>
+
+                        <input type="text" id="user-msg" placeholder="O escriba aquí si lo prefiere..." 
+                               onkeydown="if(event.key==='Enter') sendUserMessage()"
+                               class="flex-1 bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 md:py-4 text-base md:text-lg font-semibold focus:outline-none focus:border-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
+                        
+                        <button id="btn-send" onclick="sendUserMessage()" class="bg-blue-700 hover:bg-blue-800 text-white px-6 md:px-8 py-3 md:py-4 rounded-2xl font-black text-lg md:text-xl transition disabled:opacity-50 disabled:pointer-events-none">
+                            Enviar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANTALLA 3: TELEMEDICINA FULLSCREEN REAL (WEBRTC) -->
+        <div id="step-telemedicina" class="hidden w-full h-[70vh] md:h-[82vh] relative bg-slate-950 rounded-3xl overflow-hidden border-4 border-slate-800 shadow-2xl">
+            <video id="doctor-remote-video" autoplay playsinline class="w-full h-full object-cover bg-black"></video>
+
+            <div class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
+                <div class="bg-slate-950/90 backdrop-blur-md text-white text-xs md:text-base px-4 py-2 md:px-5 md:py-3 rounded-2xl border-2 border-slate-700 flex items-center gap-3">
+                    <span class="w-3 h-3 md:w-4 md:h-4 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="font-black">MÉDICO EN DIRECTO (TELEMEDICINA)</span>
+                </div>
+            </div>
+
+            <div class="absolute bottom-4 left-4 md:bottom-6 md:left-6 w-36 h-28 md:w-52 md:h-36 bg-slate-900 rounded-2xl border-2 md:border-4 border-slate-700 overflow-hidden shadow-2xl flex items-center justify-center">
+                <video id="totem-local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            </div>
+
+            <div class="absolute bottom-4 right-4 md:bottom-6 md:right-6 bg-slate-950/90 backdrop-blur-md text-amber-300 text-xs md:text-sm px-4 py-3 md:px-6 md:py-4 rounded-2xl border-2 border-amber-500/40 font-bold max-w-xs md:max-w-md">
+                <i class="fa-solid fa-volume-high text-lg md:text-xl mr-2"></i>
+                Hable directamente con el doctor. Él finalizará la llamada al terminar su consulta.
+            </div>
+        </div>
+
+    </main>
+
+    <footer id="main-footer" class="text-center text-xs md:text-sm font-bold text-slate-500 flex flex-col sm:flex-row justify-between items-center card-white p-3 md:p-4 rounded-2xl gap-2">
+        <span>Tótem Médico de Fácil Acceso</span>
+        <span class="font-mono text-slate-600">Sistema Adaptado para Adultos Mayores</span>
+    </footer>
+
+    <script>
+        let rutRaw = "";
+        let chatStep = 0;
+        let conversationHistory = [];
+        let isSeniorMode = false;
+        let recognition = null;
+        let isListening = false;
+        let isDerivando = false;
+
+        let localStream = null;
+        let peerConnection = null;
+        let telemedicinaWS = null;
+
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                {
+                    urls: 'turn:global.relay.metered.ca:80',
+                    username: 'ff8bce3de1287e26b2c03d14',
+                    credential: 'SFY6xDpAylcsZI+B'
+                },
+                {
+                    urls: 'turn:global.relay.metered.ca:443',
+                    username: 'ff8bce3de1287e26b2c03d14',
+                    credential: 'SFY6xDpAylcsZI+B'
+                },
+                {
+                    urls: 'turn:global.relay.metered.ca:443?transport=tcp',
+                    username: 'ff8bce3de1287e26b2c03d14',
+                    credential: 'SFY6xDpAylcsZI+B'
+                }
+            ]
+        };
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-CL';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                if (isDerivando) return;
+                const text = event.results[0][0].transcript;
+                document.getElementById('user-msg').value = text;
+                stopMicUI();
+                sendUserMessage();
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Error en micrófono:", event.error);
+                stopMicUI();
+            };
+
+            recognition.onend = function() {
+                stopMicUI();
+            };
+        }
+
+        function toggleVoiceRecognition() {
+            if (isDerivando) return;
+            if (!recognition) {
+                alert("El navegador del tótem no soporta entrada de voz o requiere permisos de micrófono.");
+                return;
+            }
+            if (!isListening) {
+                try {
+                    recognition.start();
+                    isListening = true;
+                    const btn = document.getElementById('btn-mic');
+                    btn.classList.add('mic-active');
+                    document.getElementById('mic-text').innerText = "Escuchando... Hable ahora";
+                } catch(e) {
+                    console.error(e);
+                }
+            } else {
+                recognition.stop();
+                stopMicUI();
+            }
+        }
+
+        function stopMicUI() {
+            isListening = false;
+            const btn = document.getElementById('btn-mic');
+            if (btn) {
+                btn.classList.remove('mic-active');
+                document.getElementById('mic-text').innerText = "Hablar por Micrófono";
+            }
+        }
+
+        function toggleSeniorMode() {
+            isSeniorMode = !isSeniorMode;
+            document.body.classList.toggle('text-senior');
+            document.getElementById('btn-text-size').innerText = isSeniorMode ? "Tamaño Normal" : "Aumentar Letra";
+        }
+
+        function handleKeyboardInput(input) {
+            let clean = input.value.replace(/[^0-9kK]/g, '').toUpperCase();
+            rutRaw = clean.slice(0, 9);
+            updateDisplay();
+        }
+
+        function pressNum(char) {
+            if (rutRaw.length < 9) {
+                rutRaw += char;
+                updateDisplay();
+            }
+        }
+
+        function clearRut() {
+            rutRaw = "";
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            if (!rutRaw) { document.getElementById('rut-input').value = ""; return; }
+            let body = rutRaw.slice(0, -1);
+            let dv = rutRaw.slice(-1);
+            let formatted = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            document.getElementById('rut-input').value = rutRaw.length > 1 ? `${formatted}-${dv}` : rutRaw;
+        }
+
+        async function validateAndStart() {
+            if (rutRaw.length < 8) {
+                alert("Por favor ingrese un RUT válido completo (ej: 18.234.567-8).");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/iniciar-consulta', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ rut: document.getElementById('rut-input').value })
+                });
+
+                if (!res.ok) {
+                    alert("RUT chileno inválido. Verifique el número e inténtelo de nuevo.");
+                    return;
+                }
+            } catch(err) {
+                console.error("Error enviando RUT inicial", err);
+            }
+
+            document.getElementById('step-rut').classList.add('hidden');
+            document.getElementById('step-triage').classList.remove('hidden');
+            document.getElementById('rut-status').innerHTML = `<i class="fa-solid fa-user-check text-emerald-600 mr-2"></i>RUT: ${document.getElementById('rut-input').value}`;
+            hablarTexto("Hola, para ayudarle por favor hable por el micrófono o presione una de las opciones en pantalla.");
+        }
+
+        function selectQuickAnswer(answerText) {
+            if (isDerivando) return;
+            document.getElementById('user-msg').value = answerText;
+            sendUserMessage();
+        }
+
+        function bloquearEntradasTriage() {
+            isDerivando = true;
+            if (isListening && recognition) {
+                recognition.stop();
+                stopMicUI();
+            }
+
+            document.getElementById('user-msg').disabled = true;
+            document.getElementById('btn-send').disabled = true;
+            document.getElementById('btn-mic').disabled = true;
+
+            const quickButtons = document.querySelectorAll('.btn-quick');
+            quickButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'pointer-events-none');
+            });
+        }
+
+        async function sendUserMessage() {
+            if (isDerivando) return;
+
+            const input = document.getElementById('user-msg');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const chatBox = document.getElementById('chat-box');
+
+            const userBubble = document.createElement('div');
+            userBubble.className = "flex gap-4 justify-end";
+            userBubble.innerHTML = `
+                <div class="bg-slate-800 text-white p-4 md:p-5 rounded-3xl rounded-tr-none text-base md:text-xl font-bold max-w-[85%] shadow-sm">
+                    ${text}
+                </div>
+            `;
+            chatBox.appendChild(userBubble);
+            input.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            chatStep++;
+            conversationHistory.push({ role: 'user', content: text });
+
+            try {
+                const res = await fetch('/api/v1/chat-evaluacion', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        rut: document.getElementById('rut-input').value || rutRaw, 
+                        mensaje: text, 
+                        paso: chatStep,
+                        historial: conversationHistory 
+                    })
+                });
+                const data = await res.json();
+
+                const aiBubble = document.createElement('div');
+                aiBubble.className = "flex gap-3 md:gap-4";
+                aiBubble.innerHTML = `
+                    <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 shadow">IA</div>
+                    <div id="last-ai-msg" class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
+                        ${data.respuesta_ia}
+                    </div>
+                `;
+                chatBox.appendChild(aiBubble);
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                hablarTexto(data.respuesta_ia.replace(/<[^>]*>?/gm, ''));
+
+                updateQuickButtons(chatStep);
+
+                conversationHistory.push({ role: 'assistant', content: data.respuesta_ia });
+
+                if (data.siguiente_accion === 'DERIVAR_TELEMEDICINA') {
+                    bloquearEntradasTriage();
+                    setTimeout(() => {
+                        document.getElementById('step-triage').classList.add('hidden');
+                        document.getElementById('step-telemedicina').classList.remove('hidden');
+                        hablarTexto("Le estamos conectando en vivo con el doctor de telemedicina. Por favor mire a la pantalla.");
+                        iniciarVideollamadaReal();
+                    }, 2500);
+                }
+
+            } catch (err) {
+                console.error("Error al conectar con la API clínica", err);
+            }
+        }
+
+        function updateQuickButtons(step) {
+            if (isDerivando) return;
+            const container = document.getElementById('quick-buttons');
+            if (step === 1) {
+                container.innerHTML = `
+                    <button onclick="selectQuickAnswer('Aumenta al toser o estornudar')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">Aumenta al toser o moverme</button>
+                    <button onclick="selectQuickAnswer('Es un dolor profundo y constante')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">Es constante y profundo</button>
+                `;
+            } else if (step === 2) {
+                container.innerHTML = `
+                    <button onclick="selectQuickAnswer('No tengo fiebre ni falta de aire')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">No tengo fiebre ni falta de aire</button>
+                    <button onclick="selectQuickAnswer('Sí tengo fiebre alta o cansancio')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300">Sí tengo fiebre o cansancio</button>
+                `;
+            }
+        }
+
+        function hablarTexto(texto) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(texto);
+                
+                let voices = window.speechSynthesis.getVoices();
+                let naturalVoice = voices.find(v => v.lang.includes('es') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Helena') || v.name.includes('Sabina') || v.name.includes('Pablo')));
+                
+                if (!naturalVoice) {
+                    naturalVoice = voices.find(v => v.lang.includes('es'));
+                }
+                
+                if (naturalVoice) {
+                    utterance.voice = naturalVoice;
+                }
+
+                utterance.lang = 'es-CL';
+                utterance.rate = 0.92;
+                utterance.pitch = 1.0;
+                
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = function() {
+                window.speechSynthesis.getVoices();
+            };
+        }
+
+        function hablarMensajeIA() {
+            const msgElement = document.getElementById('last-ai-msg');
+            if (msgElement) {
+                hablarTexto(msgElement.innerText);
+            }
+        }
+
+        async function iniciarVideollamadaReal() {
+            try {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                } catch (errMedia) {
+                    console.warn("Fallback a solo video...", errMedia);
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                }
+
+                document.getElementById('totem-local-video').srcObject = localStream;
+
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                telemedicinaWS = new WebSocket(`${protocol}//${window.location.host}/ws/telemedicina/totem`);
+                peerConnection = new RTCPeerConnection(rtcConfig);
+
+                // Candidates ICE que llegan antes de tener la descripción remota
+                let pendingCandidates = [];
+
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                peerConnection.ontrack = event => {
+                    const remoteVideo = document.getElementById('doctor-remote-video');
+                    if (remoteVideo && event.streams && event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                        remoteVideo.play().catch(() => {});
+                    }
+                };
+
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate && telemedicinaWS && telemedicinaWS.readyState === WebSocket.OPEN) {
+                        telemedicinaWS.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
+                    }
+                };
+
+                telemedicinaWS.onopen = async () => {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    telemedicinaWS.send(JSON.stringify({ type: 'offer', offer: offer }));
+                };
+
+                telemedicinaWS.onmessage = async (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'answer') {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.answer));
+                            for (const c of pendingCandidates) {
+                                await peerConnection.addIceCandidate(c);
+                            }
+                            pendingCandidates = [];
+                        } else if (msg.type === 'candidate') {
+                            const cand = new RTCIceCandidate(msg.candidate);
+                            if (peerConnection.remoteDescription) {
+                                await peerConnection.addIceCandidate(cand);
+                            } else {
+                                pendingCandidates.push(cand);
+                            }
+                        } else if (msg.type === 'end') {
+                            alert("El médico ha finalizado la consulta.");
+                            location.reload();
+                        }
+                    } catch (err) {
+                        console.error("Error procesando señalización WebRTC:", err);
+                    }
+                };
+            } catch(e) {
+                console.error("Error iniciando cámara WebRTC:", e);
+                alert("Por favor permita el acceso a la cámara y al micrófono en los permisos de la aplicación o navegador.");
+            }
+        }
+    </script>
+</body>
+</html>

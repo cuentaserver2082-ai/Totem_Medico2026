@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Clínico Profesional - Telemedicina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .login-hero-bg {
+            background-image: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4)), url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1600&auto=format&fit=crop');
+            background-size: cover; background-position: center;
+        }
+        .btn-interactive { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-interactive:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15); }
+        .btn-interactive:active { transform: scale(0.97); }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen md:h-screen flex flex-col justify-between select-none md:overflow-hidden">
+
+    <!-- LOGIN -->
+    <div id="screen-login" class="min-h-screen md:h-full w-full flex flex-col md:flex-row">
+        <div class="w-full md:w-7/12 login-hero-bg flex flex-col justify-between p-6 md:p-12 text-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-xl font-black shadow-lg">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <span class="text-lg font-extrabold tracking-wider uppercase">MedCore Health</span>
+            </div>
+            <div class="space-y-3 my-8 md:my-0">
+                <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-bold border border-emerald-500/30">Sistema Clínico Central</span>
+                <h1 class="text-3xl md:text-5xl font-black tracking-tight leading-tight md:leading-none">Portal de Telemedicina y Gestión</h1>
+                <p class="text-slate-300 text-sm md:text-base font-medium max-w-md">Plataforma segura para atención remota de pacientes, prediagnósticos inteligentes y tótem clínico.</p>
+            </div>
+            <div class="text-xs text-slate-400 font-mono">Seguridad Encriptada SSL | Red Médica 2026</div>
+        </div>
+
+        <div class="w-full md:w-5/12 bg-white border-l border-slate-200 flex flex-col justify-center p-6 md:p-10 shadow-2xl z-10 overflow-y-auto">
+            <div class="max-w-md w-full mx-auto space-y-6">
+                <div>
+                    <div class="w-12 h-12 bg-slate-100 text-slate-800 rounded-xl flex items-center justify-center text-2xl font-bold mb-3 border border-slate-200">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-900 mb-1">Acceso Profesional</h2>
+                    <p class="text-xs text-slate-500">Ingrese sus credenciales de médico registrado.</p>
+                </div>
+
+                <form onsubmit="realizarLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Correo Profesional</label>
+                        <input type="email" id="login-email" value="marcos.gonzalez@salud.cl" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-emerald-600 text-slate-900 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+                        <input type="password" id="login-pass" value="123" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-emerald-600 text-slate-900 transition">
+                    </div>
+                    <button type="submit" class="w-full py-3.5 bg-slate-900 hover:bg-emerald-600 text-white font-extrabold rounded-xl shadow-md btn-interactive text-xs uppercase tracking-wider">
+                        <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Ingresar al Portal
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- PORTAL PRINCIPAL -->
+    <div id="screen-portal" class="hidden min-h-screen md:h-full flex flex-col justify-between">
+        <header class="bg-slate-900 text-white px-4 md:px-6 py-3 flex justify-between items-center shadow">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-sm font-bold">
+                    <i class="fa-solid fa-stethoscope"></i>
+                </div>
+                <span class="text-xs font-extrabold tracking-widest uppercase">Portal Clínico de Telemedicina</span>
+            </div>
+            <div class="flex items-center gap-2 md:gap-4 text-xs font-bold">
+                <button onclick="switchTab('queue')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive"><i class="fa-solid fa-users"></i> Cola (<span id="top-badge-queue">0</span>)</button>
+                <button onclick="switchTab('history')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive"><i class="fa-solid fa-folder"></i> Historial</button>
+                <button onclick="cerrarSesion()" class="text-rose-400 hover:text-rose-300 transition ml-2 btn-interactive"><i class="fa-solid fa-power-off"></i> Salir</button>
+            </div>
+        </header>
+
+        <div class="flex-1 p-4 md:p-6 overflow-y-auto custom-scroll">
+            <div class="max-w-7xl mx-auto space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button onclick="switchTab('queue')" class="bg-amber-100 border-2 border-amber-300 p-4 rounded-xl flex items-center gap-4 text-left shadow-sm">
+                        <div class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
+                            <i class="fa-solid fa-user-clock"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-extrabold text-amber-800 uppercase block">Prioritario</span>
+                            <span class="text-xs font-black text-slate-900">Cola de Espera Activa</span>
+                        </div>
+                    </button>
+                    <button onclick="switchTab('history')" class="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-4 text-left shadow-sm">
+                        <div class="w-10 h-10 bg-slate-100 text-slate-700 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-extrabold text-slate-500 uppercase block">Registros</span>
+                            <span class="text-xs font-black text-slate-900">Historial de Atenciones</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-4 space-y-4">
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                            <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                                <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center text-xl font-bold">
+                                    <i class="fa-solid fa-hospital-user"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-slate-900 uppercase">Dr. Marcos González</h3>
+                                    <p class="text-[11px] font-bold text-emerald-600">Staff Médico Autorizado</p>
+                                </div>
+                            </div>
+                            <div class="text-xs space-y-2 text-slate-600 font-medium">
+                                <div class="flex justify-between"><span class="font-bold text-slate-500">Especialidad:</span> <span class="text-slate-900 font-bold">Medicina General</span></div>
+                                <div class="flex justify-between"><span class="font-bold text-slate-500">Registro RNPI:</span> <span class="text-slate-900 font-bold">489201</span></div>
+                                <div class="flex justify-between"><span class="font-bold text-slate-500">Estado:</span> <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-black text-[10px]">ACTIVO EN LÍNEA</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-8">
+                        <div id="tab-queue" class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm flex flex-col space-y-4">
+                            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
+                                        <i class="fa-solid fa-list-check text-emerald-600"></i> Cola de Pacientes en Espera
+                                    </h3>
+                                    <p class="text-[11px] md:text-xs text-slate-500">Seleccione un paciente para revisar su prediagnóstico e instrumentos clínicos.</p>
+                                </div>
+                                <button onclick="actualizarCola()" class="px-3 py-1.5 md:px-3.5 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 btn-interactive flex items-center gap-1.5">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs text-slate-700 min-w-[500px]">
+                                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
+                                        <tr>
+                                            <th class="p-3 rounded-l-xl">Hora</th>
+                                            <th class="p-3">RUT Paciente</th>
+                                            <th class="p-3">Motivo / Síntomas</th>
+                                            <th class="p-3">Prediagnóstico IA</th>
+                                            <th class="p-3 text-center rounded-r-xl">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="queue-table-body" class="divide-y divide-slate-100 font-medium"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="tab-history" class="hidden bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm flex flex-col space-y-4">
+                            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                                <h3 class="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-folder-closed text-emerald-600"></i> Historial General de Atenciones
+                                </h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs text-slate-700 min-w-[500px]">
+                                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
+                                        <tr>
+                                            <th class="p-3 rounded-l-xl">Código</th>
+                                            <th class="p-3">Fecha/Hora</th>
+                                            <th class="p-3">RUT</th>
+                                            <th class="p-3">Diagnóstico</th>
+                                            <th class="p-3 rounded-r-xl">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-table-body" class="divide-y divide-slate-100 font-medium"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="bg-white border-t border-slate-200 text-slate-500 text-xs font-semibold py-2.5 px-4 md:px-8 flex justify-between items-center">
+            <span>Plataforma de Telemedicina Central</span><span>Sistema Clínico Seguro v7.3</span>
+        </footer>
+    </div>
+
+    <!-- PRE-CONSULTA -->
+    <div id="screen-patient-data" class="hidden min-h-screen md:h-full flex flex-col justify-between bg-slate-100 p-4 md:p-6 overflow-y-auto">
+        <div class="max-w-4xl mx-auto w-full space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 gap-4">
+                <div class="flex items-center gap-3">
+                    <button onclick="volverAlPortal()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center text-slate-700 btn-interactive shrink-0">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-base md:text-lg font-black text-slate-900">Evaluación Pre-Consulta y Signos Vitales</h2>
+                        <p class="text-xs text-slate-500">Datos reportados por el paciente y mediciones automatizadas del tótem clínico.</p>
+                    </div>
+                </div>
+                <button onclick="comenzarLlamadaEnVivo()" class="w-full md:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg btn-interactive flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-video text-sm"></i> Comenzar Llamada en Vivo
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3 text-emerald-700 font-black text-sm uppercase">
+                        <i class="fa-solid fa-user"></i> Información del Paciente
+                    </div>
+                    <div class="space-y-3 text-xs">
+                        <div class="flex justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="font-bold text-slate-500">RUT:</span>
+                            <span id="data-rut" class="font-mono font-bold text-slate-900">--</span>
+                        </div>
+                        <div class="flex justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="font-bold text-slate-500">Nombre Completo:</span>
+                            <span id="data-nombre" class="font-bold text-slate-900">--</span>
+                        </div>
+                        <div class="flex justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="font-bold text-slate-500">Edad / Género:</span>
+                            <span id="data-edad" class="font-bold text-slate-900">--</span>
+                        </div>
+                        <div>
+                            <span class="font-bold text-slate-500 block mb-1">Síntomas Reportados:</span>
+                            <ul id="data-sintomas" class="list-disc list-inside bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-700 space-y-1"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
+                    <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3 text-sky-700 font-black text-sm uppercase">
+                        <i class="fa-solid fa-stethoscope"></i> Mediciones de Instrumentos (Tótem)
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-sky-50/50 border border-sky-100 p-3.5 rounded-xl space-y-1">
+                            <span class="font-bold text-sky-800 block text-[10px]">PRESIÓN ARTERIAL</span>
+                            <span id="inst-pa" class="text-base font-black text-slate-900">--</span>
+                        </div>
+                        <div class="bg-sky-50/50 border border-sky-100 p-3.5 rounded-xl space-y-1">
+                            <span class="font-bold text-sky-800 block text-[10px]">FRECUENCIA CARDÍACA</span>
+                            <span id="inst-fc" class="text-base font-black text-slate-900">--</span>
+                        </div>
+                        <div class="bg-sky-50/50 border border-sky-100 p-3.5 rounded-xl space-y-1">
+                            <span class="font-bold text-sky-800 block text-[10px]">TEMPERATURA CORPORAL</span>
+                            <span id="inst-temp" class="text-base font-black text-slate-900">--</span>
+                        </div>
+                        <div class="bg-sky-50/50 border border-sky-100 p-3.5 rounded-xl space-y-1">
+                            <span class="font-bold text-sky-800 block text-[10px]">SATURACIÓN OXÍGENO</span>
+                            <span id="inst-sat" class="text-base font-black text-slate-900">--</span>
+                        </div>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-1">
+                        <span class="font-bold text-amber-900 block text-xs uppercase"><i class="fa-solid fa-robot mr-1"></i> Prediagnóstico IA Sugerido</span>
+                        <span id="inst-diag" class="font-bold text-slate-900 text-xs">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SALA DE TELEMEDICINA -->
+    <div id="screen-telemed" class="hidden min-h-screen md:h-full flex flex-col justify-between p-4 md:p-6">
+        <header class="bg-slate-900 text-white px-4 md:px-6 py-3 rounded-2xl flex justify-between items-center shadow-lg gap-2">
+            <div class="flex items-center gap-3">
+                <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span class="text-xs font-black tracking-wider uppercase">Sesión Activa</span>
+            </div>
+            <button onclick="finalizarConsulta()" class="px-4 md:px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs btn-interactive flex items-center gap-2">
+                <i class="fa-solid fa-phone-slash"></i> Finalizar Consulta
+            </button>
+        </header>
+
+        <div class="flex-1 my-4 md:my-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+            <div class="lg:col-span-8 relative bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl min-h-[300px] md:min-h-[400px] flex items-center justify-center">
+                <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-bold text-white border border-slate-700 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span>Cámara Paciente</span>
+                </div>
+                <div class="absolute bottom-4 left-4 w-32 h-24 md:w-44 md:h-32 bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-lg">
+                    <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    <div class="absolute top-1 left-2 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">Tu Cámara</div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-4 md:p-6 shadow-sm flex flex-col justify-between overflow-y-auto custom-scroll space-y-4">
+                <div class="space-y-4">
+                    <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+                        <h4 class="font-black text-slate-900 text-sm uppercase"><i class="fa-solid fa-id-card text-emerald-600 mr-1.5"></i> Resumen del Usuario</h4>
+                        <span class="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[10px] rounded">En Línea</span>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="text-[10px] font-bold text-slate-400 block">PACIENTE</span>
+                            <span id="sum-nombre" class="font-extrabold text-slate-900 text-sm">--</span>
+                            <span id="sum-rut" class="font-mono text-emerald-700 block font-bold">--</span>
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                            <span class="text-[10px] font-bold text-slate-400 block uppercase">Signos Vitales (Tótem)</span>
+                            <div class="grid grid-cols-2 gap-2 pt-1 font-semibold text-slate-800">
+                                <div>PA: <span id="sum-pa" class="font-bold text-slate-900">--</span></div>
+                                <div>FC: <span id="sum-fc" class="font-bold text-slate-900">--</span></div>
+                                <div>Temp: <span id="sum-temp" class="font-bold text-slate-900">--</span></div>
+                                <div>SatO2: <span id="sum-sat" class="font-bold text-slate-900">--</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="text-[10px] font-bold text-slate-400 block uppercase">Motivo y Síntomas</span>
+                            <p id="sum-sintomas" class="text-slate-700 font-medium mt-1">--</p>
+                        </div>
+
+                        <div class="bg-amber-50 p-3 rounded-xl border border-amber-200">
+                            <span class="text-[10px] font-bold text-amber-900 block uppercase">Prediagnóstico IA</span>
+                            <p id="sum-diag" class="font-bold text-slate-900 mt-0.5 text-xs">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100">
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Notas Médicas / Receta Rápida</label>
+                    <textarea placeholder="Escriba indicaciones o fármacos..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-600 resize-none h-20"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let colaActual = [];
+        let pacienteActual = null;
+        let localStream = null;
+        let peerConnection = null;
+        let doctorWS = null;
+
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                {
+                    urls: 'turn:global.relay.metered.ca:80',
+                    username: 'ff8bce3de1287e26b2c03d14',
+                    credential: 'SFY6xDpAylcsZI+B'
+                },
+                {
+                    urls: 'turn:global.relay.metered.ca:443',
+                    username: 'ff8bce3de1287e26b2c03d14',
+                    credential: 'SFY6xDpAylcsZI+B'
+                },
+                {
+                    urls: 'turn:global.relay.metered.ca:443?transport=tcp',
+                    username: 'ff8bce3de1287e26b2c03d14',
+                    credential: 'SFY6xDpAylcsZI+B'
+                }
+            ]
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            actualizarCola();
+            cargarHistorial();
+        });
+
+        function realizarLogin(e) {
+            e.preventDefault();
+            document.getElementById('screen-login').classList.add('hidden');
+            document.getElementById('screen-portal').classList.remove('hidden');
+            actualizarCola();
+        }
+
+        function cerrarSesion() { location.reload(); }
+
+        function switchTab(tab) {
+            document.getElementById('tab-queue').classList.add('hidden');
+            document.getElementById('tab-history').classList.add('hidden');
+            if (tab === 'queue') {
+                document.getElementById('tab-queue').classList.remove('hidden');
+                actualizarCola();
+            } else if (tab === 'history') {
+                document.getElementById('tab-history').classList.remove('hidden');
+                cargarHistorial();
+            }
+        }
+
+        async function actualizarCola() {
+            try {
+                const res = await fetch('/api/v1/cola-pacientes');
+                if (res.ok) {
+                    colaActual = await res.json();
+                    renderizarTablaCola(colaActual);
+                }
+            } catch(e) {
+                console.warn("Error al solicitar cola de pacientes...");
+            }
+        }
+
+        function renderizarTablaCola(lista) {
+            const tbody = document.getElementById('queue-table-body');
+            tbody.innerHTML = "";
+            document.getElementById('top-badge-queue').innerText = lista.length;
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 italic">No hay pacientes en espera.</td></tr>`;
+                return;
+            }
+
+            lista.forEach((p, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                const sintomaPrincipal = Array.isArray(p.sintomas) ? (p.sintomas[0] || 'En evaluación') : (p.sintomas || 'En evaluación');
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-slate-500">${p.hora || 'Ahora'}</td>
+                    <td class="p-3 font-mono font-bold text-emerald-700">${p.rut}</td>
+                    <td class="p-3">${sintomaPrincipal}</td>
+                    <td class="p-3 font-semibold text-slate-900">${p.prediagnostico || 'En evaluación'}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="verDatosPaciente(${index})" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs btn-interactive shadow flex items-center gap-1.5 mx-auto">
+                            <i class="fa-solid fa-file-medical"></i> Atender
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function verDatosPaciente(index) {
+            pacienteActual = colaActual[index];
+            if (!pacienteActual) return;
+
+            document.getElementById('data-rut').innerText = pacienteActual.rut;
+            document.getElementById('data-nombre').innerText = pacienteActual.nombre || 'Paciente Tótem';
+            document.getElementById('data-edad').innerText = pacienteActual.edad || '30 años / Paciente';
+            
+            const ul = document.getElementById('data-sintomas');
+            ul.innerHTML = "";
+            const sintomas = Array.isArray(pacienteActual.sintomas) ? pacienteActual.sintomas : [pacienteActual.sintomas];
+            sintomas.forEach(s => {
+                const li = document.createElement('li');
+                li.innerText = s;
+                ul.appendChild(li);
+            });
+
+            const inst = pacienteActual.instrumentos || { pa: '120/80 mmHg', fc: '80 lpm', temp: '37.0 °C', sat: '98%' };
+            document.getElementById('inst-pa').innerText = inst.pa || '120/80 mmHg';
+            document.getElementById('inst-fc').innerText = inst.fc || '80 lpm';
+            document.getElementById('inst-temp').innerText = inst.temp || '37.0 °C';
+            document.getElementById('inst-sat').innerText = inst.sat || '98%';
+            document.getElementById('inst-diag').innerText = pacienteActual.prediagnostico || 'En evaluación';
+
+            document.getElementById('screen-portal').classList.add('hidden');
+            document.getElementById('screen-patient-data').classList.remove('hidden');
+        }
+
+        function volverAlPortal() {
+            document.getElementById('screen-patient-data').classList.add('hidden');
+            document.getElementById('screen-portal').classList.remove('hidden');
+        }
+
+        function comenzarLlamadaEnVivo() {
+            if (!pacienteActual) return;
+
+            document.getElementById('sum-nombre').innerText = pacienteActual.nombre || 'Paciente Tótem';
+            document.getElementById('sum-rut').innerText = pacienteActual.rut;
+            
+            const inst = pacienteActual.instrumentos || { pa: '120/80 mmHg', fc: '80 lpm', temp: '37.0 °C', sat: '98%' };
+            document.getElementById('sum-pa').innerText = inst.pa || '120/80 mmHg';
+            document.getElementById('sum-fc').innerText = inst.fc || '80 lpm';
+            document.getElementById('sum-temp').innerText = inst.temp || '37.0 °C';
+            document.getElementById('sum-sat').innerText = inst.sat || '98%';
+
+            const sintomas = Array.isArray(pacienteActual.sintomas) ? pacienteActual.sintomas.join(', ') : pacienteActual.sintomas;
+            document.getElementById('sum-sintomas').innerText = sintomas || 'Sin síntomas reportados';
+            document.getElementById('sum-diag').innerText = pacienteActual.prediagnostico || 'En evaluación';
+
+            document.getElementById('screen-patient-data').classList.add('hidden');
+            document.getElementById('screen-telemed').classList.remove('hidden');
+
+            iniciarWebRTCDoctor();
+        }
+
+        async function cargarHistorial() {
+            try {
+                const res = await fetch('/api/v1/historial');
+                if (res.ok) {
+                    const data = await res.json();
+                    renderizarHistorial(data);
+                }
+            } catch(e) {}
+        }
+
+        function renderizarHistorial(lista) {
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = "";
+            lista.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-slate-500">${item.id}</td>
+                    <td class="p-3 font-mono text-slate-500">${item.fecha}</td>
+                    <td class="p-3 font-mono font-bold text-emerald-700">${item.rut}</td>
+                    <td class="p-3 font-semibold text-slate-900">${item.diagnostico}</td>
+                    <td class="p-3"><span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-bold text-[10px]">${item.estado}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function obtenerMedios() {
+            const constraints = {
+                video: { facingMode: 'user' },
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+            };
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (err) {
+                console.warn("Falló audio+video, probando solo video...", err);
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                alert("No se pudo acceder al micrófono, por lo que solo se enviará video.\n\nRevise el permiso de micrófono del navegador.");
+                return stream;
+            }
+            return stream;
+        }
+
+        async function iniciarWebRTCDoctor() {
+            try {
+                localStream = await obtenerMedios();
+                document.getElementById('localVideo').srcObject = localStream;
+
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                doctorWS = new WebSocket(`${protocol}//${window.location.host}/ws/telemedicina/doctor`);
+                peerConnection = new RTCPeerConnection(rtcConfig);
+
+                let pendingCandidates = [];
+
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                peerConnection.ontrack = event => {
+                    const remoteVideo = document.getElementById('remoteVideo');
+                    if (remoteVideo && event.streams && event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                        remoteVideo.play().catch(() => {});
+                    }
+                };
+
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate && doctorWS && doctorWS.readyState === WebSocket.OPEN) {
+                        doctorWS.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
+                    }
+                };
+
+                doctorWS.onmessage = async (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'offer') {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer));
+                            for (const c of pendingCandidates) {
+                                await peerConnection.addIceCandidate(c);
+                            }
+                            pendingCandidates = [];
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+                            doctorWS.send(JSON.stringify({ type: 'answer', answer: answer }));
+                        } else if (msg.type === 'candidate') {
+                            const cand = new RTCIceCandidate(msg.candidate);
+                            if (peerConnection.remoteDescription) {
+                                await peerConnection.addIceCandidate(cand);
+                            } else {
+                                pendingCandidates.push(cand);
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error procesando señalización WebRTC:", err);
+                    }
+                };
+            } catch(e) {
+                console.error("Error iniciando cámara WebRTC del doctor:", e);
+                alert("Verifique los permisos de cámara y micrófono en los ajustes del navegador.");
+            }
+        }
+
+        function finalizarConsulta() {
+            if (doctorWS && doctorWS.readyState === WebSocket.OPEN) {
+                doctorWS.send(JSON.stringify({ type: 'end' }));
+                doctorWS.close();
+            }
+            if (peerConnection) peerConnection.close();
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+            alert("Consulta finalizada y registrada correctamente.");
+            document.getElementById('screen-telemed').classList.add('hidden');
+            document.getElementById('screen-portal').classList.remove('hidden');
+            actualizarCola();
+        }
+    </script>
+</body>
+</html>
