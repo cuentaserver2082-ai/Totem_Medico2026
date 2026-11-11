@@ -1,12 +1,16 @@
 import os
 import sqlite3
 import json
+from contextlib import closing
 from datetime import datetime
+from hashlib import sha256
+from uuid import uuid4
 from typing import List, Optional, Dict
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-import google.generativeai as genai
+from pydantic import BaseModel, Field
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 # ------------------------------------------------------------------
@@ -16,22 +20,20 @@ load_dotenv()
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+gemini_client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(timeout=8000, retry_options=types.HttpRetryOptions(attempts=1)),
+) if GEMINI_API_KEY else None
 
 SYSTEM_PROMPT = """
 Eres un asistente médico virtual de triage para un tótem de atención en salud en Chile.
 Tu objetivo es evaluar brevemente los síntomas del paciente antes de derivarlo al médico.
 Instrucciones:
 1. Responde de forma empática, clara, formal y breve (máximo 2 oraciones por respuesta).
-2. Haz preguntas específicas sobre el malestar principal (duración, intensidad o síntomas asociados).
+2. Haz una pregunta sobre el malestar principal. Limítate a recopilar información, sin diagnosticar, indicar fármacos ni asignar prioridad clínica.
 3. Si el paciente menciona una urgencia vital (dolor opresivo al pecho, pérdida de conciencia, dificultad respiratoria severa o sangrado abundante), indica que se requiere atención presencial urgente.
 """
-
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=SYSTEM_PROMPT
-)
 
 # ------------------------------------------------------------------
 # BASE DE DATOS SQLITE (PERSISTENTE)
@@ -52,7 +54,8 @@ def init_db():
             edad TEXT,
             sintomas TEXT,
             instrumentos TEXT,
-            prediagnostico TEXT
+            prediagnostico TEXT,
+            prioridad INTEGER NOT NULL DEFAULT 4 CHECK (prioridad BETWEEN 1 AND 4)
         )
     """)
 
@@ -63,13 +66,30 @@ def init_db():
             fecha TEXT,
             rut TEXT,
             diagnostico TEXT,
-            estado TEXT
+            estado TEXT,
+            receta TEXT NOT NULL DEFAULT ''
         )
     """)
 
-    # Insertar paciente inicial de prueba si la tabla está vacía
-    cursor.execute("SELECT COUNT(*) FROM cola_pacientes")
-    if cursor.fetchone()[0] == 0:
+    if "prioridad" not in {col[1] for col in cursor.execute("PRAGMA table_info(cola_pacientes)")}:
+        cursor.execute("""
+            ALTER TABLE cola_pacientes ADD COLUMN prioridad INTEGER NOT NULL DEFAULT 4
+            CHECK (prioridad BETWEEN 1 AND 4)
+        """)
+    if "receta" not in {col[1] for col in cursor.execute("PRAGMA table_info(historial_consultas)")}:
+        cursor.execute("ALTER TABLE historial_consultas ADD COLUMN receta TEXT NOT NULL DEFAULT ''")
+
+    for tabla in ("cola_pacientes", "historial_consultas"):
+        if "acceso_resumen" not in {col[1] for col in cursor.execute(f"PRAGMA table_info({tabla})")}:
+            cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN acceso_resumen TEXT")
+        cursor.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{tabla}_resumen ON {tabla}(acceso_resumen)")
+
+    # Sembrar la demostración en una base sin actividad.
+    cursor.execute("""
+        SELECT NOT EXISTS(SELECT 1 FROM cola_pacientes)
+           AND NOT EXISTS(SELECT 1 FROM historial_consultas)
+    """)
+    if cursor.fetchone()[0]:
         cursor.execute("""
             INSERT INTO cola_pacientes (id, hora, rut, nombre, edad, sintomas, instrumentos, prediagnostico)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -95,15 +115,6 @@ init_db()
 app = FastAPI(title="Sistema de Triage con IA y Telemedicina Médica")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-sesion_activa: Dict = {
-    "rut": None,
-    "nombre": "Paciente Tótem",
-    "edad": "En evaluación",
-    "sintomas": [],
-    "instrumentos": {"pa": "120/80 mmHg", "fc": "80 lpm", "temp": "37.0 °C", "sat": "98%"},
-    "prediagnostico": "Triage de Entrada"
-}
 
 # ------------------------------------------------------------------
 # GERENTE DE CONEXIÓN WEBSOCKET Y SEÑALIZACIÓN WEBRTC
@@ -157,10 +168,10 @@ manager = ConnectionManager()
 # ------------------------------------------------------------------
 def validar_rut_chileno(rut: str) -> bool:
     rut_limpio = rut.replace(".", "").replace("-", "").upper().strip()
-    if len(rut_limpio) < 2:
+    if not 2 <= len(rut_limpio) <= 9:
         return False
     cuerpo, dv = rut_limpio[:-1], rut_limpio[-1]
-    if not cuerpo.isdigit():
+    if not cuerpo.isascii() or not cuerpo.isdecimal():
         return False
     suma = 0
     multiplicador = 2
@@ -179,7 +190,17 @@ class ChatReq(BaseModel):
     rut: str
     mensaje: str
     paso: int
-    historial: Optional[List[Dict]] = []
+    historial: Optional[List[Dict]] = None
+    acceso_resumen: Optional[str] = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+
+class PrioridadReq(BaseModel):
+    prioridad: int = Field(ge=1, le=4)
+
+
+class CierreConsultaReq(BaseModel):
+    diagnostico: str = Field(default="", max_length=1000)
+    receta: str = Field(default="", max_length=4000)
 
 # ------------------------------------------------------------------
 # ENDPOINTS REST DE LA API CON SQLITE
@@ -189,7 +210,10 @@ class ChatReq(BaseModel):
 def obtener_cola():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, hora, rut, nombre, edad, sintomas, instrumentos, prediagnostico FROM cola_pacientes")
+    cursor.execute("""
+        SELECT id, hora, rut, nombre, edad, sintomas, instrumentos, prediagnostico, prioridad
+        FROM cola_pacientes ORDER BY prioridad, rowid
+    """)
     rows = cursor.fetchall()
     conn.close()
 
@@ -203,7 +227,8 @@ def obtener_cola():
             "edad": r[4],
             "sintomas": json.loads(r[5]) if r[5] else [],
             "instrumentos": json.loads(r[6]) if r[6] else {},
-            "prediagnostico": r[7]
+            "prediagnostico": r[7],
+            "prioridad": r[8]
         })
     return resultado
 
@@ -211,7 +236,10 @@ def obtener_cola():
 def obtener_historial():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, fecha, rut, diagnostico, estado FROM historial_consultas")
+    cursor.execute("""
+        SELECT id, fecha, rut, diagnostico, estado, receta
+        FROM historial_consultas ORDER BY rowid DESC
+    """)
     rows = cursor.fetchall()
     conn.close()
 
@@ -222,90 +250,160 @@ def obtener_historial():
             "fecha": r[1],
             "rut": r[2],
             "diagnostico": r[3],
-            "estado": r[4]
+            "estado": r[4],
+            "receta": r[5]
         })
     return resultado
+
+@app.patch("/api/v1/cola-pacientes/{paciente_id}/prioridad")
+def actualizar_prioridad(paciente_id: str, datos: PrioridadReq):
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        actualizado = conn.execute(
+            "UPDATE cola_pacientes SET prioridad = ? WHERE id = ?",
+            (datos.prioridad, paciente_id),
+        )
+        if not actualizado.rowcount:
+            raise HTTPException(status_code=404, detail="El paciente ya no está en la cola.")
+    return {"prioridad": datos.prioridad}
+
+
+@app.post("/api/v1/cola-pacientes/{paciente_id}/finalizar")
+def finalizar_atencion(paciente_id: str, datos: CierreConsultaReq):
+    diagnostico, receta = datos.diagnostico.strip(), datos.receta.strip()
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        conn.execute("BEGIN IMMEDIATE")
+        paciente = conn.execute(
+            "SELECT rut, acceso_resumen FROM cola_pacientes WHERE id = ?", (paciente_id,)
+        ).fetchone()
+        if paciente:
+            conn.execute("""
+                INSERT INTO historial_consultas (id, fecha, rut, diagnostico, estado, receta, acceso_resumen)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                paciente_id, datetime.now().isoformat(timespec="seconds"), paciente[0],
+                diagnostico, "Finalizada", receta, paciente[1],
+            ))
+            conn.execute("DELETE FROM cola_pacientes WHERE id = ?", (paciente_id,))
+        else:
+            registro = conn.execute(
+                "SELECT diagnostico, receta FROM historial_consultas WHERE id = ?", (paciente_id,)
+            ).fetchone()
+            if registro is None:
+                raise HTTPException(status_code=404, detail="La atención ya no está disponible.")
+            if registro != (diagnostico, receta):
+                raise HTTPException(status_code=409, detail="La atención ya se guardó con otros datos.")
+    return {"id": paciente_id, "estado": "Finalizada"}
+
+
+@app.get("/api/v1/resumen-atencion")
+def resumen_atencion(response: Response, authorization: str = Header(default="")):
+    prefijo, _, acceso = authorization.partition(" ")
+    if prefijo.lower() != "bearer" or len(acceso) != 64:
+        raise HTTPException(status_code=401, detail="Falta el acceso a la atención.")
+
+    acceso_hash = sha256(acceso.encode()).hexdigest()
+    response.headers["Cache-Control"] = "no-store"
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        conn.execute("BEGIN")
+        registro = conn.execute("""
+            SELECT id, fecha, diagnostico, receta FROM historial_consultas WHERE acceso_resumen = ?
+        """, (acceso_hash,)).fetchone()
+        if registro:
+            return dict(zip(("id", "fecha", "diagnostico", "receta"), registro))
+
+        pendiente = conn.execute(
+            "SELECT 1 FROM cola_pacientes WHERE acceso_resumen = ?", (acceso_hash,)
+        ).fetchone()
+        if pendiente:
+            response.status_code = 202
+            return {"estado": "Pendiente"}
+    raise HTTPException(status_code=404, detail="La atención no está disponible.")
+
 
 @app.post("/api/v1/iniciar-consulta")
 def iniciar_consulta(paciente: PacienteReq):
     if not validar_rut_chileno(paciente.rut):
         raise HTTPException(status_code=400, detail="RUT inválido.")
-    global sesion_activa
-    sesion_activa["rut"] = paciente.rut
-    sesion_activa["sintomas"] = []
     return {"status": "success", "rut": paciente.rut}
+
 
 @app.post("/api/v1/chat-evaluacion")
 async def procesar_chat(chat: ChatReq):
-    global sesion_activa
-    
-    sesion_activa["rut"] = chat.rut
-    if chat.mensaje not in sesion_activa["sintomas"]:
-        sesion_activa["sintomas"].append(chat.mensaje)
+    if not validar_rut_chileno(chat.rut):
+        raise HTTPException(status_code=400, detail="RUT inválido.")
+
+    mensaje = chat.mensaje.strip()
+    if not mensaje:
+        raise HTTPException(status_code=400, detail="Ingrese un síntoma para continuar.")
+    messages = []
+    for item in chat.historial or []:
+        role = item.get("role")
+        content = item.get("content")
+        if role in ("user", "assistant") and isinstance(content, str) and content.strip():
+            messages.append({"role": "user" if role == "user" else "model", "parts": [{"text": content.strip()}]})
+    actual = {"role": "user", "parts": [{"text": mensaje}]}
+    if not messages or messages[-1] != actual:
+        messages.append(actual)
 
     if chat.paso >= 2:
-        prediagnostico_final = "Evaluado por IA / Sospecha de Cuadro Clínico General"
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM cola_pacientes WHERE rut = ?", (chat.rut,))
-        existe = cursor.fetchone()[0] > 0
-
-        if not existe:
-            cursor.execute("SELECT COUNT(*) FROM cola_pacientes")
-            total = cursor.fetchone()[0]
-            nuevo_id = f"AT-{total + 9017}"
-            hora_actual = datetime.now().strftime("%H:%M")
-
-            sintomas_json = json.dumps(list(sesion_activa["sintomas"]))
-            instrumentos_json = json.dumps({"pa": "120/80 mmHg", "fc": "80 lpm", "temp": "37.0 °C", "sat": "98%"})
-
-            cursor.execute("""
-                INSERT INTO cola_pacientes (id, hora, rut, nombre, edad, sintomas, instrumentos, prediagnostico)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                nuevo_id,
-                hora_actual,
-                chat.rut,
-                "Paciente Tótem",
-                "30 años / Paciente",
-                sintomas_json,
-                instrumentos_json,
-                prediagnostico_final
-            ))
-            conn.commit()
-        conn.close()
+        rut = chat.rut.replace(".", "").replace("-", "").strip().upper()
+        cuerpo, digito = rut[:-1], rut[-1]
+        rut_formateado = f"{int(cuerpo):,}".replace(",", ".") + f"-{digito}"
+        sintomas = list(dict.fromkeys(
+            item["parts"][0]["text"] for item in messages if item["role"] == "user"
+        ))
+        acceso_hash = sha256(chat.acceso_resumen.encode()).hexdigest() if chat.acceso_resumen else None
+        with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+            conn.execute("BEGIN IMMEDIATE")
+            archivada = conn.execute(
+                "SELECT rut FROM historial_consultas WHERE acceso_resumen = ?", (acceso_hash,)
+            ).fetchone()
+            if archivada:
+                if archivada[0] != rut_formateado:
+                    raise HTTPException(status_code=409, detail="El acceso corresponde a otra atención.")
+                return {
+                    "respuesta_ia": "La atención ya está disponible.",
+                    "siguiente_accion": "MOSTRAR_RESUMEN",
+                }
+            try:
+                cambio = conn.execute("""
+                    INSERT INTO cola_pacientes
+                        (id, hora, rut, nombre, edad, sintomas, instrumentos, prediagnostico, acceso_resumen)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(rut) DO UPDATE SET sintomas = excluded.sintomas
+                    WHERE cola_pacientes.acceso_resumen IS excluded.acceso_resumen
+                """, (
+                    f"AT-{uuid4().hex[:12]}", datetime.now().strftime("%H:%M"),
+                    rut_formateado, "Paciente Tótem", "Sin informar",
+                    json.dumps(sintomas), "{}", "Pendiente de revisión profesional", acceso_hash,
+                ))
+            except sqlite3.IntegrityError:
+                raise HTTPException(status_code=409, detail="El acceso corresponde a otra atención.")
+            if cambio.rowcount == 0:
+                raise HTTPException(status_code=409, detail="Ya hay una atención en curso para este RUT.")
 
         return {
-            "respuesta_ia": "Gracias por detallar sus síntomas. He registrado su ficha y lo estoy derivando en este momento con el médico de turno...",
-            "confianza": "85%",
+            "respuesta_ia": "Registré sus síntomas. Ahora lo conectaremos con el profesional de turno.",
             "siguiente_accion": "DERIVAR_TELEMEDICINA"
         }
 
-    if GEMINI_API_KEY:
+    if gemini_client:
         try:
-            messages = []
-            if chat.historial:
-                for item in chat.historial:
-                    role = "user" if item.get("role") == "user" else "model"
-                    messages.append({"role": role, "parts": [item.get("content", "")]})
-            
-            messages.append({"role": "user", "parts": [chat.mensaje]})
-            
-            response = model.generate_content(messages)
-            respuesta_texto = response.text.strip()
-
-            return {
-                "respuesta_ia": respuesta_texto,
-                "confianza": "70%",
-                "siguiente_accion": "CONTINUAR_CUESTIONARIO"
-            }
-        except Exception as e:
-            print(f"Error en Gemini API: {e}")
+            response = await gemini_client.aio.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=messages,
+                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, max_output_tokens=512),
+            )
+            if response.text and response.text.strip():
+                return {
+                    "respuesta_ia": response.text.strip(),
+                    "siguiente_accion": "CONTINUAR_CUESTIONARIO"
+                }
+        except Exception as exc:
+            print(f"Gemini no disponible ({type(exc).__name__}); se usará el cuestionario local.")
 
     return {
-        "respuesta_ia": "Comprendo lo que me indica. ¿Hace cuántos días aproximadamente comenzaron estos malestares y con qué intensidad los siente?",
-        "confianza": "50%",
+        "respuesta_ia": "¿Hace cuánto comenzaron los síntomas y qué intensidad tienen?",
         "siguiente_accion": "CONTINUAR_CUESTIONARIO"
     }
 
