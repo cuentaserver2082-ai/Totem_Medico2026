@@ -3,681 +3,1536 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tótem Médico Inteligente Senior</title>
+    <title>Tótem Médico de Salud</title>
+    <!-- App instalable a pantalla completa (tablet en modo tótem) -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0b4a8f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/static/img/icono-192.png">
+    <link rel="apple-touch-icon" href="/static/img/icono-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700;800&display=swap');
-        body { font-family: 'Atkinson Hyperlegible Next', sans-serif; background-color: #f1f5f9; color: #0f172a; }
-        .card-white { background: #ffffff; border: 2px solid #cbd5e1; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
-        :focus-visible { outline: 3px solid #1d4ed8; outline-offset: 3px; }
+
+        /* ============ BASE ============ */
+        :root {
+            --azul: #0b4a8f;          /* color principal (contraste 8.6:1 con blanco) */
+            --verde: #065f46;         /* acción principal "continuar" */
+            --rojo: #b91c1c;          /* acciones de salida / alertas */
+            --tinta: #0f172a;
+        }
+        html { font-size: 100%; }
+        html.letra-grande { font-size: 118%; }          /* botón "Aumentar letra": escala todo (rem) */
+        body { font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; background: #eef2f7; color: var(--tinta); }
+        :focus-visible { outline: 4px solid #1d4ed8; outline-offset: 3px; }
+        /* `hidden` debe ganar sobre el `display` de .btn sin importar el orden de carga de Tailwind. */
+        .btn.hidden { display: none; }
+        .card-white { background: #fff; border: 2px solid #cbd5e1; box-shadow: 0 8px 30px rgba(0,0,0,.10); }
+
+        /* ============ FONDO DE LA PANTALLA DE INICIO ============
+           La imagen vive en /static/img/image_4135df.jpg. Encima va un degradado oscuro + difuminado
+           suave para que los textos y botones mantengan contraste alto. */
+        #fondo-inicio {
+            position: fixed; inset: 0; z-index: 0; opacity: 0; pointer-events: none; transition: opacity .5s ease;
+            background: url('/static/img/image_4135df.jpg') center / cover no-repeat, #0b2545;
+        }
+        #fondo-inicio::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(100deg, rgba(6,24,52,.84) 0%, rgba(6,24,52,.58) 50%, rgba(6,24,52,.36) 100%);
+            -webkit-backdrop-filter: blur(2.5px); backdrop-filter: blur(2.5px);
+        }
+        body.pantalla-inicio #fondo-inicio { opacity: 1; }
+        .hero-texto { text-shadow: 0 2px 10px rgba(0,0,0,.55); }
+
+        /* ============ BOTONES GRANDES (mínimo ~64 px de alto: cómodo para dedos mayores) ============ */
+        .btn { min-height: 4rem; border-radius: 1rem; font-weight: 800; transition: transform .1s ease, background-color .15s ease;
+               display: inline-flex; align-items: center; justify-content: center; gap: .6rem; padding: .75rem 1.5rem; cursor: pointer; }
+        .btn:active:not(:disabled) { transform: scale(.97); }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-primario  { background: var(--verde); color: #fff; font-size: 1.5rem; box-shadow: 0 6px 18px rgba(6,95,70,.35); }
+        .btn-primario:hover:not(:disabled) { background: #064e3b; }
+        .btn-azul      { background: var(--azul); color: #fff; font-size: 1.25rem; }
+        .btn-azul:hover:not(:disabled) { background: #083a72; }
+        .btn-borde     { background: #fff; color: var(--tinta); border: 3px solid #475569; font-size: 1.25rem; }
+        .btn-borde:hover:not(:disabled) { background: #f1f5f9; }
+        .btn-rojo      { background: var(--rojo); color: #fff; font-size: 1.25rem; }
+        .btn-rojo:hover:not(:disabled) { background: #991b1b; }
+        .tecla { min-height: 4.25rem; font-size: 2rem; font-weight: 800; background: #f1f5f9; border: 3px solid #94a3b8; border-radius: 1rem;
+                 color: var(--tinta); transition: transform .08s ease, background-color .12s ease; }
+        .tecla:hover { background: #dbeafe; }
+        .tecla:active { transform: scale(.94); background: #bfdbfe; }
+
+        /* Tablets en horizontal (~800 px de alto): compacta para que el teclado y el botón entren sin hacer scroll. */
+        @media (min-width: 768px) and (max-height: 860px) {
+            .tecla { min-height: 3.5rem; font-size: 1.75rem; }
+            #main-footer { display: none; }
+            #step-rut .card-white { padding: 1rem 1.25rem; }
+            #titulo-escaneo + p { display: none; }
+        }
+
+        /* ============ CHAT ============ */
         .chat-scroll { overscroll-behavior-y: contain; overflow-wrap: anywhere; }
+        .chat-scroll::-webkit-scrollbar { width: 10px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 5px; }
+        .mic-active { animation: pulso-rojo 1.5s infinite; background-color: #dc2626 !important; color: #fff !important; }
+        @keyframes pulso-rojo {
+            0% { box-shadow: 0 0 0 0 rgba(220,38,38,.7); } 70% { box-shadow: 0 0 0 15px rgba(220,38,38,0); } 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+        }
+        .estado-error { background: #fef2f2; border: 3px solid #b91c1c; color: #7f1d1d; padding: .75rem 1rem; border-radius: 1rem; }
+
+        /* ============ ESCANEO BIOMÉTRICO ============ */
+        .visor { position: relative; overflow: hidden; border-radius: 1.5rem; background: #0b1220; aspect-ratio: 16 / 10; }
+        .visor video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }   /* efecto espejo */
+        .visor-guia { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+        .linea-escaneo { position: absolute; left: 8%; right: 8%; height: 4px; border-radius: 4px; top: 10%; opacity: 0;
+                         background: linear-gradient(90deg, transparent, #34d399, transparent); box-shadow: 0 0 18px 4px rgba(52,211,153,.8); }
+        .escaneando .linea-escaneo { opacity: 1; animation: barrido 2.2s ease-in-out infinite alternate; }
+        @keyframes barrido { from { top: 12%; } to { top: 88%; } }
+        .barra { height: 1.25rem; background: #e2e8f0; border-radius: 999px; overflow: hidden; border: 2px solid #94a3b8; }
+        .barra > div { height: 100%; width: 0; background: linear-gradient(90deg, #0b4a8f, #059669); border-radius: 999px; transition: width .25s linear; }
+        .vital { display: grid; grid-template-columns: 3rem 1fr auto 2rem; align-items: center; gap: .75rem; padding: .5rem 1rem;
+                 border: 3px solid #cbd5e1; border-radius: 1rem; background: #f8fafc; }
+        .vital .icono { width: 3rem; height: 3rem; border-radius: 999px; background: #dbeafe; color: var(--azul); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+        .vital .valor { font-size: 1.5rem; font-weight: 800; }
+        .vital.midiendo { border-color: #0b4a8f; background: #eff6ff; }
+        .vital.listo { border-color: #059669; background: #ecfdf5; }
+
+        /* ============ CÁMARA TÉRMICA SIMULADA (solo temperatura corporal) ============ */
+        .visor canvas.termica { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); display: none; }
+        .visor.termico canvas.termica { display: block; }
+        .visor.termico video { opacity: 0; }                    /* el video sigue activo (se lee para el mapa de calor) pero no se muestra */
+        .visor-hud { position: absolute; left: .75rem; right: .75rem; bottom: .75rem; display: none; justify-content: space-between; align-items: flex-end; gap: .5rem; pointer-events: none; }
+        .visor.termico .visor-hud { display: flex; }
+        .leyenda-termica { width: 8.5rem; height: .9rem; border-radius: 999px; border: 2px solid #fff; background: linear-gradient(90deg, #0a1a8c, #00aa5a, #fadc28, #e61e1e); }
+        .visor-temp { color: #fff; font-weight: 900; font-size: clamp(1.75rem, 5vw, 2.75rem); line-height: 1; text-shadow: 0 2px 8px rgba(0,0,0,.9); font-variant-numeric: tabular-nums; }
+
+        /* ============ SENSORES PERIFÉRICOS SIMULADOS (oxímetro y brazalete) ============ */
+        .sensor-card { border: 3px solid #cbd5e1; border-radius: 1.5rem; background: #f8fafc; padding: 1rem 1.25rem; }
+        .sensor-card.activo { border-color: #0b4a8f; background: #eff6ff; }
+        .sensor-card.listo { border-color: #059669; background: #ecfdf5; }
+        .sensor-led { width: 1rem; height: 1rem; border-radius: 50%; background: #dc2626; opacity: .25; box-shadow: 0 0 12px 3px rgba(220,38,38,.8); }
+        .sensor-card.activo .sensor-led { animation: parpadeo-led .8s ease-in-out infinite; }
+        @keyframes parpadeo-led { 0%,100% { opacity: .2; } 50% { opacity: 1; } }
+        .onda-pulso path { stroke-dasharray: 300; stroke-dashoffset: 300; }
+        .sensor-card.activo .onda-pulso path { animation: trazo-ecg 1.1s linear infinite; }
+        .sensor-card.listo .onda-pulso path { stroke-dashoffset: 0; }
+        @keyframes trazo-ecg { to { stroke-dashoffset: 0; } }
+        .manometro { height: 1.5rem; background: #e2e8f0; border: 2px solid #94a3b8; border-radius: 999px; overflow: hidden; }
+        .manometro > div { height: 100%; width: 0; background: linear-gradient(90deg, #059669, #f59e0b, #dc2626); border-radius: 999px; }
+        .sensor-valor { font-size: 2.25rem; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.1; }
+
+        /* ============ CHAT DE LA VIDEOLLAMADA ============ */
+        .chat-llamada-burbuja { padding: .75rem 1rem; border-radius: 1.25rem; font-size: 1.35rem; font-weight: 700; max-width: 92%; overflow-wrap: anywhere; }
+        .chat-llamada-doctor { background: #dbeafe; border: 2px solid #3b82f6; color: #0f172a; border-top-left-radius: 0; }
+        .chat-llamada-paciente { background: #1e293b; color: #fff; margin-left: auto; border-top-right-radius: 0; }
+
+        /* ============ ESPERA DEL MÉDICO ============ */
+        .latido { animation: latido 1.6s ease-in-out infinite; }
+        @keyframes latido { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+        /* ============ IMPRESIÓN DEL RESUMEN ============ */
         @media print {
             body.mostrando-resumen { display: block; background: white; padding: 0; }
-            body.mostrando-resumen #main-header,
-            body.mostrando-resumen #main-footer,
-            body.mostrando-resumen #resumen-acciones { display: none !important; }
-            body.mostrando-resumen main { display: block; margin: 0; }
+            body.mostrando-resumen #main-header, body.mostrando-resumen #main-footer, body.mostrando-resumen #resumen-acciones,
+            body.mostrando-resumen #fondo-inicio { display: none !important; }
             #step-resumen { box-shadow: none; border: 0; max-width: none; }
         }
-        .chat-scroll::-webkit-scrollbar { width: 8px; }
-        .chat-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 4px; }
-        
-        .text-senior { font-size: 1.25rem !important; line-height: 1.75rem !important; }
-        
-        .mic-active {
-            animation: pulse-red 1.5s infinite;
-            background-color: #dc2626 !important;
-            color: #ffffff !important;
-            border-color: #b91c1c !important;
-        }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-        }
+        /* Respeta a quien desactiva animaciones en su dispositivo */
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 bg-slate-100">
+<body class="min-h-dvh flex flex-col p-3 md:p-5 gap-3 md:gap-4 pantalla-inicio">
 
-    <!-- Encabezado Senior -->
-    <header id="main-header" class="flex flex-col sm:flex-row justify-between items-center card-white p-4 md:p-5 rounded-2xl gap-4">
-        <div class="flex items-center gap-4 w-full sm:w-auto">
-            <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-700 text-white rounded-xl flex items-center justify-center font-bold text-xl md:text-2xl shadow-md shrink-0">
-                <i class="fa-solid fa-user-doctor"></i>
-            </div>
+    <div id="fondo-inicio" aria-hidden="true"></div>
+
+    <!-- ================= ENCABEZADO ================= -->
+    <header id="main-header" class="relative z-10 card-white rounded-2xl p-3 md:p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-blue-800 text-white rounded-xl flex items-center justify-center text-2xl shrink-0"><i class="fa-solid fa-user-doctor"></i></div>
             <div>
-                <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900">Tótem Médico de Salud</h1>
-                <p class="text-xs md:text-sm text-blue-700 font-bold">Consulta Médica & Triage Asistido</p>
+                <h1 class="text-xl md:text-2xl font-extrabold leading-tight">Tótem Médico de Salud</h1>
+                <p class="text-sm md:text-base text-blue-800 font-bold">Atención médica sin filas</p>
             </div>
         </div>
 
-        <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-            <button onclick="toggleSeniorMode()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-4 py-2.5 md:px-5 md:py-3 rounded-xl border-2 border-amber-600 shadow-md transition flex items-center gap-2 text-sm md:text-base">
-                <i class="fa-solid fa-eye text-lg md:text-xl"></i>
-                <span id="btn-text-size">Aumentar Letra</span>
-            </button>
-            <div id="rut-status" class="text-sm md:text-base font-bold text-slate-800 bg-slate-200 px-4 py-2.5 md:px-5 md:py-3 rounded-xl border-2 border-slate-300">
-                <i class="fa-solid fa-id-card text-blue-700 mr-2"></i>Esperando RUT...
+        <!-- Indicador de pasos (se oculta en la pantalla de inicio) -->
+        <div id="indicador-pasos" class="hidden order-3 md:order-none w-full md:w-auto md:flex-1 md:max-w-md" aria-live="polite">
+            <p id="indicador-texto" class="text-base md:text-lg font-extrabold text-slate-900 mb-1"></p>
+            <div class="flex gap-1.5" aria-hidden="true">
+                <span class="paso-barra h-3 flex-1 rounded-full bg-slate-300"></span><span class="paso-barra h-3 flex-1 rounded-full bg-slate-300"></span>
+                <span class="paso-barra h-3 flex-1 rounded-full bg-slate-300"></span><span class="paso-barra h-3 flex-1 rounded-full bg-slate-300"></span>
+                <span class="paso-barra h-3 flex-1 rounded-full bg-slate-300"></span>
             </div>
+        </div>
+
+        <div class="flex items-center gap-2 md:gap-3">
+            <button type="button" onclick="alternarLetraGrande()" class="btn btn-borde !min-h-[3rem] !text-base md:!text-lg !px-4" aria-pressed="false" id="btn-letra">
+                <i class="fa-solid fa-text-height"></i><span id="btn-letra-texto">Letra grande</span>
+            </button>
+            <div id="rut-status" class="hidden text-base md:text-lg font-bold bg-slate-100 px-4 py-2.5 rounded-xl border-2 border-slate-300"></div>
         </div>
     </header>
 
-    <!-- Área Principal -->
-    <main class="flex-1 my-4 md:my-6 flex flex-col justify-center items-center relative">
+    <!-- Botón de pantalla completa (se oculta solo cuando ya está a pantalla completa o instalada como app) -->
+    <button id="btn-pantalla-completa" type="button" onclick="pantallaCompleta()" aria-label="Pasar a pantalla completa"
+            class="fixed bottom-3 right-3 z-50 w-14 h-14 rounded-full bg-blue-900 text-white text-2xl shadow-xl border-2 border-white/70 opacity-80 hover:opacity-100">
+        <i class="fa-solid fa-expand" aria-hidden="true"></i>
+    </button>
 
-        <!-- PANTALLA 1: INGRESO DE RUT -->
-        <div id="step-rut" class="card-white p-6 md:p-8 rounded-3xl w-full max-w-lg text-center my-auto">
-            <div class="w-16 h-16 md:w-20 md:h-20 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4 border-2 border-blue-300">
-                <i class="fa-solid fa-hand-pointer text-3xl md:text-4xl"></i>
-            </div>
-            <h2 id="title-rut" class="text-2xl md:text-3xl font-black text-slate-900 mb-1 md:mb-2">¡Bienvenido!</h2>
-            <p id="desc-rut" class="text-slate-700 text-base md:text-lg font-semibold mb-4 md:mb-6">Presione su RUT en los botones de abajo:</p>
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-center w-full">
 
-            <input type="text" id="rut-input" placeholder="12.345.678-K" 
-                   oninput="handleKeyboardInput(this)"
-                   class="w-full text-center text-2xl md:text-4xl font-mono tracking-widest py-3 md:py-4 mb-4 md:mb-6 bg-slate-50 border-4 border-blue-600 rounded-2xl text-blue-950 font-black focus:outline-none">
-
-            <div class="grid grid-cols-3 gap-2.5 md:gap-4 mb-4 md:mb-6">
-                <button onclick="pressNum('1')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">1</button>
-                <button onclick="pressNum('2')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">2</button>
-                <button onclick="pressNum('3')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">3</button>
-                <button onclick="pressNum('4')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">4</button>
-                <button onclick="pressNum('5')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">5</button>
-                <button onclick="pressNum('6')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">6</button>
-                <button onclick="pressNum('7')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">7</button>
-                <button onclick="pressNum('8')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">8</button>
-                <button onclick="pressNum('9')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">9</button>
-                <button onclick="pressNum('K')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-blue-700 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">K</button>
-                <button onclick="pressNum('0')" class="py-3.5 md:py-5 bg-slate-100 hover:bg-blue-100 text-slate-900 text-2xl md:text-3xl font-black rounded-2xl border-2 border-slate-300 transition active:scale-95">0</button>
-                <button onclick="clearRut()" class="py-3.5 md:py-5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-black text-lg md:text-xl rounded-2xl border-2 border-rose-300 transition active:scale-95">Borrar</button>
+        <!-- ============ PANTALLA 1: BIENVENIDA E INGRESO DE RUT ============ -->
+        <section id="step-rut" class="w-full max-w-6xl grid lg:grid-cols-5 gap-6 lg:gap-10 items-center" aria-labelledby="titulo-rut">
+            <!-- Texto de bienvenida sobre la foto -->
+            <div class="lg:col-span-3 text-white hero-texto">
+                <p class="inline-block bg-white/15 border border-white/40 rounded-full px-4 py-1.5 text-base md:text-lg font-bold mb-3">
+                    <i class="fa-solid fa-hospital mr-2"></i>Centro de Salud
+                </p>
+                <h2 id="titulo-rut" class="text-4xl md:text-6xl font-black leading-tight">¡Bienvenido/a!<br>Le atenderemos sin hacer fila</h2>
+                <ol class="hidden md:block mt-6 space-y-2.5 text-xl md:text-2xl font-bold">
+                    <li class="flex items-center gap-4"><span class="w-10 h-10 rounded-full bg-white text-blue-900 flex items-center justify-center font-black shrink-0">1</span>Escriba su RUT</li>
+                    <li class="flex items-center gap-4"><span class="w-10 h-10 rounded-full bg-white text-blue-900 flex items-center justify-center font-black shrink-0">2</span>Mírese en la cámara: medimos su temperatura</li>
+                    <li class="flex items-center gap-4"><span class="w-10 h-10 rounded-full bg-white text-blue-900 flex items-center justify-center font-black shrink-0">3</span>Oxímetro y brazalete: pulso y presión</li>
+                    <li class="flex items-center gap-4"><span class="w-10 h-10 rounded-full bg-white text-blue-900 flex items-center justify-center font-black shrink-0">4</span>Cuéntenos cómo se siente</li>
+                    <li class="flex items-center gap-4"><span class="w-10 h-10 rounded-full bg-white text-blue-900 flex items-center justify-center font-black shrink-0">5</span>Hable con el médico por video</li>
+                </ol>
             </div>
 
-            <button onclick="validateAndStart()" class="w-full py-4 md:py-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xl md:text-2xl rounded-2xl shadow-xl transition active:scale-98">
-                <i class="fa-solid fa-circle-check mr-2"></i> INGRESAR AHORA
-            </button>
-        </div>
+            <!-- Tarjeta con teclado numérico -->
+            <div class="lg:col-span-2 card-white rounded-3xl p-5 md:p-7 text-center w-full max-w-lg mx-auto" style="background: rgba(255,255,255,.97)">
+                <div id="aviso-inicio" class="hidden estado-error text-left text-lg font-bold mb-4" role="alert"></div>
+                <h3 class="text-2xl md:text-3xl font-black">Escriba su RUT</h3>
+                <p class="text-lg text-slate-700 font-semibold mb-3">Toque los números grandes de abajo</p>
 
-        <!-- PANTALLA 2: CHATBOT ACCESIBLE -->
-        <div id="step-triage" class="hidden w-full max-w-5xl card-white p-4 md:p-8 rounded-3xl my-auto">
-            <div class="flex flex-col gap-4">
+                <label for="rut-input" class="sr-only">RUT</label>
+                <input type="text" id="rut-input" inputmode="none" autocomplete="off" placeholder="12.345.678-K" aria-describedby="rut-error"
+                       oninput="manejarTecladoFisico(this)" onkeydown="if(event.key==='Enter') validarYComenzar()"
+                       class="w-full text-center text-3xl md:text-4xl font-mono tracking-wider py-3 mb-2 bg-slate-50 border-4 border-blue-700 rounded-2xl text-blue-950 font-black">
+                <p id="rut-error" class="min-h-[1.75rem] text-lg font-bold text-red-800 mb-2" role="alert"></p>
+
+                <div id="teclado" class="grid grid-cols-3 gap-2.5 md:gap-3 mb-4"></div>
+
+                <button id="btn-ingresar" type="button" onclick="validarYComenzar()" class="btn btn-primario w-full">
+                    <i class="fa-solid fa-circle-check"></i> CONTINUAR
+                </button>
+            </div>
+        </section>
+
+        <!-- ============ PANTALLA 2: CÁMARA TÉRMICA (SOLO TEMPERATURA CORPORAL) ============ -->
+        <section id="step-escaneo" class="hidden w-full max-w-5xl card-white rounded-3xl p-4 md:p-6" aria-labelledby="titulo-escaneo">
+            <h2 id="titulo-escaneo" class="text-3xl md:text-4xl font-black mb-3">Medición de temperatura</h2>
+            <p class="text-lg md:text-xl font-semibold text-slate-700 -mt-2 mb-3">Mire a la cámara y quédese quieto/a unos segundos.</p>
+
+            <div class="grid md:grid-cols-2 gap-5 md:gap-8 items-start">
                 <div>
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-200 pb-3 md:pb-4 mb-4 gap-2">
-                        <h3 class="text-lg md:text-xl font-black text-slate-900 flex items-center gap-3">
-                            <i class="fa-solid fa-robot text-blue-700 text-2xl md:text-3xl"></i> Asistente Médico Virtual
-                        </h3>
-                        <button id="btn-tts" onclick="hablarMensajeIA()" class="bg-blue-100 hover:bg-blue-200 text-blue-900 font-extrabold px-4 py-2 md:px-5 md:py-3 rounded-xl text-sm md:text-base flex items-center gap-2 border-2 border-blue-300">
-                            <i class="fa-solid fa-volume-high text-lg md:text-xl"></i> Repetir en Voz Alta
-                        </button>
-                    </div>
-
-                    <div id="chat-box" role="log" aria-label="Conversación de triage" tabindex="0" class="space-y-4 h-[clamp(11rem,38dvh,22rem)] overflow-y-auto chat-scroll pr-3">
-                        <div class="flex gap-3 md:gap-4">
-                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 shadow">IA</div>
-                            <div data-ai-message class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
-                                Hola, para ayudarle por favor hable por el micrófono o presione una de las opciones: <strong>¿Qué síntoma o molestia principal tiene hoy?</strong>
-                            </div>
+                    <div id="visor" class="visor">
+                        <video id="scan-video" autoplay playsinline muted></video>
+                        <!-- Mapa de calor simulado (azul = frío, rojo = caliente) dibujado a partir de la cámara -->
+                        <canvas id="scan-termica" class="termica" aria-hidden="true"></canvas>
+                        <!-- Guía facial -->
+                        <svg class="visor-guia" viewBox="0 0 400 300" preserveAspectRatio="none" aria-hidden="true">
+                            <ellipse cx="200" cy="150" rx="82" ry="108" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="14 10" opacity=".9"/>
+                            <path d="M30 60V30h30M370 60V30h-30M30 240v30h30M370 240v30h-30" fill="none" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
+                        </svg>
+                        <div class="linea-escaneo"></div>
+                        <div class="visor-hud" aria-hidden="true">
+                            <div><p class="text-white text-sm font-black drop-shadow">FRÍO → CALOR</p><div class="leyenda-termica"></div></div>
+                            <span id="visor-temp" class="visor-temp">--,- °C</span>
+                        </div>
+                        <div id="visor-vacio" class="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6 gap-3">
+                            <i id="visor-icono" class="fa-solid fa-camera text-6xl opacity-80"></i>
+                            <p id="visor-texto" class="text-xl font-bold">La cámara térmica se activará al comenzar</p>
                         </div>
                     </div>
+                    <p id="scan-mensaje" class="mt-4 text-xl md:text-2xl font-extrabold text-blue-900 min-h-[2.25rem]" role="status" aria-live="polite"></p>
+                    <div class="barra mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="scan-progreso"><div id="scan-barra"></div></div>
+                    <p id="scan-tiempo" class="mt-1 text-base font-bold text-slate-600 text-right"></p>
                 </div>
+
+                <div class="flex flex-col gap-3">
+                    <!-- Esta cámara mide SOLO la temperatura. Oxígeno, pulso y presión vienen del siguiente paso (sensores). -->
+                    <ul id="lista-vitales" class="space-y-2.5">
+                        <li class="vital" data-vital="temp"><span class="icono"><i class="fa-solid fa-temperature-half"></i></span><span class="text-lg font-bold">Temperatura corporal</span><span class="valor" id="v-temp">—</span><span class="estado text-2xl"></span></li>
+                    </ul>
+                    <p class="text-base font-semibold text-slate-600"><i class="fa-solid fa-circle-info mr-1"></i>En el siguiente paso medirá su pulso, oxígeno y presión con el oxímetro y el brazalete.</p>
+                    <p id="scan-demo" class="hidden text-base font-semibold text-slate-600"><i class="fa-solid fa-flask mr-1"></i>Modo demostración: la temperatura es una estimación simulada.</p>
+                    <p id="scan-error" class="hidden estado-error text-lg font-bold" role="alert"></p>
+                </div>
+            </div>
+
+            <div class="mt-5 flex flex-col sm:flex-row gap-3">
+                <button id="btn-scan-iniciar" type="button" onclick="iniciarEscaneo()" class="btn btn-azul !text-2xl sm:flex-1"><i class="fa-solid fa-play"></i> COMENZAR MEDICIÓN</button>
+                <button id="btn-scan-continuar" type="button" onclick="continuarASensores()" class="btn btn-primario hidden sm:flex-1"><i class="fa-solid fa-arrow-right"></i> CONTINUAR</button>
+                <button id="btn-scan-omitir" type="button" onclick="omitirEscaneo()" class="btn btn-borde hidden">Continuar sin medición</button>
+                <button type="button" onclick="reiniciarSesion('manual')" class="btn btn-borde"><i class="fa-solid fa-arrow-left"></i> Volver al inicio</button>
+            </div>
+        </section>
+
+        <!-- ============ PANTALLA 3: SENSORES PERIFÉRICOS (OXÍMETRO + BRAZALETE, SIMULADOS) ============ -->
+        <section id="step-sensores" class="hidden w-full max-w-5xl card-white rounded-3xl p-4 md:p-6" aria-labelledby="titulo-sensores">
+            <h2 id="titulo-sensores" class="text-3xl md:text-4xl font-black mb-1">Pulso, oxígeno y presión</h2>
+            <p class="text-lg md:text-xl font-semibold text-slate-700 mb-4">Ponga el dedo en el oxímetro y el brazo en el brazalete. Toque el botón y espere sin moverse.</p>
+
+            <div class="grid md:grid-cols-2 gap-4 md:gap-6">
+                <!-- Oxímetro de dedo -->
+                <div id="sensor-oximetro" class="sensor-card">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-2xl font-black flex items-center gap-3"><i class="fa-solid fa-hand-point-up text-blue-800"></i> Oxímetro de dedo</h3>
+                        <span class="sensor-led" aria-hidden="true"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mt-3">
+                        <div><p class="font-bold text-slate-600">Oxígeno</p><p class="sensor-valor"><span id="sens-spo2">—</span><span class="text-xl"> %</span></p></div>
+                        <div><p class="font-bold text-slate-600">Pulso</p><p class="sensor-valor"><span id="sens-fc">—</span><span class="text-xl"> lpm</span></p></div>
+                    </div>
+                    <svg class="onda-pulso w-full h-14 mt-2" viewBox="0 0 300 60" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M0 35 H40 L50 35 L58 8 L68 52 L76 35 H120 L130 35 L138 8 L148 52 L156 35 H200 L210 35 L218 8 L228 52 L236 35 H300" fill="none" stroke="#dc2626" stroke-width="3" stroke-linejoin="round"/>
+                    </svg>
+                    <p id="sens-ox-estado" class="mt-1 text-lg font-bold text-slate-700 min-h-[1.75rem]">Esperando…</p>
+                </div>
+
+                <!-- Brazalete de presión -->
+                <div id="sensor-brazalete" class="sensor-card">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-2xl font-black flex items-center gap-3"><i class="fa-solid fa-gauge-high text-blue-800"></i> Brazalete de presión</h3>
+                        <span class="sensor-led" aria-hidden="true"></span>
+                    </div>
+                    <div class="mt-3">
+                        <p class="font-bold text-slate-600">Presión del brazalete (mmHg)</p>
+                        <p class="sensor-valor"><span id="sens-pa-vivo">0</span></p>
+                        <div class="manometro mt-2" aria-hidden="true"><div id="sens-manometro"></div></div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="font-bold text-slate-600">Presión arterial (máx/mín)</p>
+                        <p class="sensor-valor"><span id="sens-pa">—</span></p>
+                    </div>
+                    <p id="sens-br-estado" class="mt-1 text-lg font-bold text-slate-700 min-h-[1.75rem]">Esperando…</p>
+                </div>
+            </div>
+
+            <p id="sens-mensaje" class="mt-4 text-xl md:text-2xl font-extrabold text-blue-900 min-h-[2.25rem]" role="status" aria-live="polite"></p>
+            <div class="barra mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="sens-progreso"><div id="sens-barra"></div></div>
+            <p id="sens-demo" class="hidden mt-2 text-base font-semibold text-slate-600"><i class="fa-solid fa-flask mr-1"></i>Modo demostración: las lecturas de los sensores son simuladas.</p>
+
+            <div class="mt-5 flex flex-col sm:flex-row gap-3">
+                <button id="btn-sens-iniciar" type="button" onclick="iniciarSensores()" class="btn btn-azul !text-2xl sm:flex-1"><i class="fa-solid fa-play"></i> COMENZAR LECTURA</button>
+                <button id="btn-sens-continuar" type="button" onclick="continuarAlChat()" class="btn btn-primario hidden sm:flex-1"><i class="fa-solid fa-arrow-right"></i> CONTINUAR</button>
+                <button id="btn-sens-omitir" type="button" onclick="omitirSensores()" class="btn btn-borde">Continuar sin sensores</button>
+                <button type="button" onclick="volverAEscaneo()" class="btn btn-borde"><i class="fa-solid fa-arrow-left"></i> Atrás</button>
+            </div>
+        </section>
+
+        <!-- ============ PANTALLA 4: CHAT DE SÍNTOMAS ============ -->
+        <section id="step-triage" class="hidden w-full max-w-5xl card-white p-4 md:p-8 rounded-3xl" aria-labelledby="titulo-chat">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-slate-200 pb-3 gap-2">
+                    <h2 id="titulo-chat" class="text-2xl md:text-3xl font-black flex items-center gap-3">
+                        <i class="fa-solid fa-comments text-blue-800"></i> Cuéntenos cómo se siente
+                    </h2>
+                    <button id="btn-tts" type="button" onclick="hablarMensajeIA()" class="btn btn-azul !min-h-[3rem] !text-lg">
+                        <i class="fa-solid fa-volume-high"></i> Escuchar en voz alta
+                    </button>
+                </div>
+
+                <div id="chat-box" role="log" aria-label="Conversación" tabindex="0" class="space-y-4 h-[clamp(9rem,30dvh,21rem)] overflow-y-auto chat-scroll pr-3"></div>
 
                 <div class="pt-4 border-t-2 border-slate-200">
-                    <p id="chat-status" class="text-sm md:text-base font-bold text-slate-700 mb-3" role="status"></p>
-                    
-                    <div id="quick-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-4">
-                        <button onclick="selectQuickAnswer('Me duele la cabeza')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-extrabold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
-                            🤕 Me duele la cabeza
-                        </button>
-                        <button onclick="selectQuickAnswer('Me duele la garganta y tengo tos')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
-                            🗣️ Dolor de garganta / Tos
-                        </button>
-                        <button onclick="selectQuickAnswer('Siento molestia en el pecho')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
-                            🩺 Molestia en el pecho
-                        </button>
-                        <button onclick="selectQuickAnswer('Tengo dolor del cuerpo o malestar')" class="btn-quick py-3 md:py-4 px-4 md:px-5 bg-slate-100 hover:bg-blue-100 text-slate-900 font-bold text-base md:text-lg rounded-2xl border-2 border-slate-300 transition text-left">
-                            🦴 Malestar general / Cuerpo
-                        </button>
+                    <p id="chat-status" class="hidden text-lg font-bold mb-3" role="alert"></p>
+
+                    <div id="quick-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <button type="button" onclick="seleccionarRespuestaRapida('Me duele la cabeza')" class="btn-quick btn btn-borde !justify-start !text-xl">🤕 Me duele la cabeza</button>
+                        <button type="button" onclick="seleccionarRespuestaRapida('Me duele la garganta y tengo tos')" class="btn-quick btn btn-borde !justify-start !text-xl">🗣️ Garganta o tos</button>
+                        <button type="button" onclick="seleccionarRespuestaRapida('Siento molestia en el pecho')" class="btn-quick btn btn-borde !justify-start !text-xl">🫀 Molestia en el pecho</button>
+                        <button type="button" onclick="seleccionarRespuestaRapida('Tengo dolor del cuerpo o malestar')" class="btn-quick btn btn-borde !justify-start !text-xl">🦴 Dolor de cuerpo o malestar</button>
                     </div>
 
-                    <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
-                        <button id="btn-mic" onclick="toggleVoiceRecognition()" 
-                                class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 md:py-4 rounded-2xl font-black text-base md:text-lg flex items-center justify-center gap-3 border-2 border-rose-700 shadow-md transition active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
-                            <i class="fa-solid fa-microphone text-xl md:text-2xl"></i>
-                            <span id="mic-text">Hablar por Micrófono</span>
+                    <div class="flex flex-col lg:flex-row gap-3 items-stretch">
+                        <button id="btn-mic" type="button" onclick="alternarReconocimientoVoz()" class="btn !bg-rose-700 hover:!bg-rose-800 !text-white !text-xl shrink-0">
+                            <i class="fa-solid fa-microphone"></i><span id="mic-text">Hablar</span>
                         </button>
-
-                        <input type="text" id="user-msg" aria-label="Respuesta al triage" maxlength="2000" placeholder="O escriba aquí si lo prefiere..."
-                               onkeydown="if(event.key==='Enter') sendUserMessage()"
-                               class="min-w-0 flex-1 bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 md:py-4 text-base md:text-lg font-semibold focus:outline-none focus:border-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
-                        
-                        <button id="btn-send" onclick="sendUserMessage()" class="bg-blue-700 hover:bg-blue-800 text-white px-6 md:px-8 py-3 md:py-4 rounded-2xl font-black text-lg md:text-xl transition disabled:opacity-50 disabled:pointer-events-none">
-                            Enviar
-                        </button>
+                        <input type="text" id="user-msg" aria-label="Escriba aquí su respuesta" maxlength="500" placeholder="O escriba aquí..."
+                               onkeydown="if(event.key==='Enter') enviarMensaje()"
+                               class="min-w-0 flex-1 bg-slate-50 border-4 border-slate-400 rounded-2xl px-4 py-3 text-xl font-semibold focus:outline-none focus:border-blue-700 disabled:bg-slate-200">
+                        <button id="btn-send" type="button" onclick="enviarMensaje()" class="btn btn-primario !text-2xl">Enviar <i class="fa-solid fa-paper-plane"></i></button>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- PANTALLA 3: TELEMEDICINA FULLSCREEN REAL (WEBRTC) -->
-        <div id="step-telemedicina" class="hidden w-full h-[min(70dvh,48rem)] min-h-[15rem] relative bg-slate-950 rounded-3xl overflow-hidden border-4 border-slate-800 shadow-2xl">
-            <video id="doctor-remote-video" autoplay playsinline class="w-full h-full object-contain bg-black"></video>
+        <!-- ============ PANTALLA 5: ESPERA Y VIDEOLLAMADA CON EL MÉDICO ============ -->
+        <section id="step-telemedicina" class="hidden w-full max-w-6xl" aria-label="Videollamada con el médico">
+          <div class="flex flex-col lg:flex-row gap-3 lg:h-[min(76dvh,50rem)]">
+            <!-- Video del médico -->
+            <div class="relative flex-1 h-[min(46dvh,30rem)] lg:h-auto min-h-[18rem] bg-slate-950 rounded-3xl overflow-hidden border-4 border-slate-800 shadow-2xl">
+                <video id="doctor-remote-video" autoplay playsinline class="w-full h-full object-contain bg-black"></video>
 
-            <div class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
-                <div class="bg-slate-950/90 backdrop-blur-md text-white text-xs md:text-base px-4 py-2 md:px-5 md:py-3 rounded-2xl border-2 border-slate-700 flex items-center gap-3">
-                    <span class="w-3 h-3 md:w-4 md:h-4 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span class="font-black">MÉDICO EN DIRECTO (TELEMEDICINA)</span>
+                <!-- Se muestra si el médico no tiene cámara: solo se oye su voz -->
+                <div id="doctor-sin-video" class="hidden absolute inset-0 z-[5] flex-col items-center justify-center text-center text-white gap-3 p-4 bg-slate-900">
+                    <i class="fa-solid fa-user-doctor text-7xl text-emerald-400" aria-hidden="true"></i>
+                    <p class="text-2xl font-black">Médico sin cámara (solo audio)</p>
+                    <p class="text-lg font-semibold text-slate-300">Usted puede escucharlo/a y puede escribirle en el chat.</p>
+                </div>
+
+                <!-- Panel de espera con cuenta regresiva (se oculta cuando el médico se conecta) -->
+                <div id="espera-overlay" class="absolute inset-0 z-10 bg-slate-950/95 text-white flex flex-col items-center justify-center text-center p-5 gap-4">
+                    <i class="fa-solid fa-user-doctor text-6xl md:text-7xl text-emerald-400 latido" aria-hidden="true"></i>
+                    <h2 class="text-3xl md:text-5xl font-black">Estamos avisando al médico</h2>
+                    <p class="text-xl md:text-2xl font-semibold max-w-2xl">Por favor espere frente a la pantalla. Cuando el médico esté listo, la llamada comenzará sola.</p>
+                    <div>
+                        <p class="text-lg font-bold text-slate-300">Tiempo máximo de espera</p>
+                        <p id="espera-reloj" class="text-6xl md:text-7xl font-black font-mono tabular-nums" role="timer" aria-live="off">5:00</p>
+                    </div>
+                    <div class="barra w-full max-w-xl"><div id="espera-barra" style="width:100%"></div></div>
+                    <p id="espera-error" class="hidden estado-error text-lg font-bold max-w-xl" role="alert"></p>
+                    <button type="button" onclick="cancelarEspera()" class="btn btn-borde !min-h-[3.25rem]"><i class="fa-solid fa-xmark"></i> Cancelar y salir</button>
+                </div>
+
+                <div id="llamada-etiqueta" class="hidden absolute top-4 left-4 z-20 bg-slate-950/90 text-white text-base px-4 py-2.5 rounded-2xl border-2 border-slate-700 items-center gap-3">
+                    <span class="w-3.5 h-3.5 bg-emerald-500 rounded-full animate-pulse"></span><span class="font-black">MÉDICO EN DIRECTO</span>
+                </div>
+                <div class="absolute bottom-4 left-4 z-20 w-28 h-20 sm:w-36 sm:h-28 md:w-48 md:h-32 bg-slate-900 rounded-2xl border-2 md:border-4 border-slate-700 overflow-hidden shadow-2xl">
+                    <video id="totem-local-video" autoplay playsinline muted class="w-full h-full object-cover" style="transform:scaleX(-1)"></video>
+                    <div id="totem-sin-camara" class="hidden absolute inset-0 bg-slate-800 text-white text-center flex-col items-center justify-center text-xs sm:text-sm font-bold p-1"><i class="fa-solid fa-video-slash text-xl mb-1"></i>Sin cámara</div>
                 </div>
             </div>
 
-            <div class="absolute bottom-4 left-4 md:bottom-6 md:left-6 w-28 h-20 sm:w-36 sm:h-28 md:w-52 md:h-36 bg-slate-900 rounded-2xl border-2 md:border-4 border-slate-700 overflow-hidden shadow-2xl flex items-center justify-center">
-                <video id="totem-local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
-            </div>
+            <!-- Chat escrito con el médico + botón grande para terminar -->
+            <aside class="card-white rounded-3xl p-3 md:p-4 flex flex-col gap-3 lg:w-[24rem] lg:shrink-0 min-h-0" aria-label="Chat con el médico">
+                <h3 class="text-xl md:text-2xl font-black flex items-center gap-3"><i class="fa-solid fa-comment-medical text-blue-800"></i> Mensajes del médico</h3>
+                <div id="llamada-chat-log" role="log" aria-live="polite" tabindex="0" class="chat-scroll space-y-3 overflow-y-auto flex-1 min-h-[7rem] max-h-[14rem] lg:max-h-none pr-2"></div>
+                <div id="llamada-quick" class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="enviarChatLlamada('Sí')" class="btn btn-borde !min-h-[3.25rem] !text-xl !px-2">Sí</button>
+                    <button type="button" onclick="enviarChatLlamada('No')" class="btn btn-borde !min-h-[3.25rem] !text-xl !px-2">No</button>
+                    <button type="button" onclick="enviarChatLlamada('No entendí, ¿puede repetir?')" class="btn btn-borde !min-h-[3.25rem] !text-base !px-2">Repita</button>
+                </div>
+                <div class="flex gap-2">
+                    <input id="llamada-msg" type="text" maxlength="500" placeholder="Escriba su respuesta…" aria-label="Escriba su respuesta al médico" onkeydown="if(event.key==='Enter') enviarChatLlamada()"
+                           class="min-w-0 flex-1 bg-slate-50 border-4 border-slate-400 rounded-2xl px-3 py-2 text-xl font-semibold focus:outline-none focus:border-blue-700 disabled:bg-slate-200">
+                    <button id="btn-llamada-enviar" type="button" onclick="enviarChatLlamada()" class="btn btn-primario !min-h-[3.5rem] !px-4 !text-xl" aria-label="Enviar mensaje"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+                <button id="btn-finalizar-llamada" type="button" onclick="finalizarLlamadaTotem(true)" class="btn btn-rojo !text-2xl !min-h-[4.5rem] w-full">
+                    <i class="fa-solid fa-phone-slash"></i> FINALIZAR LLAMADA
+                </button>
+            </aside>
+          </div>
+        </section>
 
-            <button type="button" onclick="finalizarLlamadaTotem(true)" class="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex items-center gap-2 bg-rose-700 hover:bg-rose-800 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl text-sm md:text-lg font-black">
-                <i class="fa-solid fa-phone-slash" aria-hidden="true"></i>
-                Finalizar llamada
-            </button>
-        </div>
+        <!-- ============ PANTALLA: TIEMPO DE ESPERA AGOTADO ============ -->
+        <section id="step-timeout" class="hidden w-full max-w-3xl card-white rounded-3xl p-6 md:p-10 text-center" aria-live="assertive">
+            <i class="fa-solid fa-hourglass-end text-7xl text-amber-600 mb-4" aria-hidden="true"></i>
+            <h2 class="text-3xl md:text-5xl font-black leading-tight" role="alert">Tiempo de espera finalizado, por favor intente nuevamente o acérquese a mesón</h2>
+            <p class="text-xl font-semibold text-slate-700 mt-4">Volveremos al inicio en <span id="timeout-segundos" class="font-black">10</span> segundos.</p>
+            <button type="button" onclick="reiniciarSesion('manual')" class="btn btn-azul mt-6"><i class="fa-solid fa-house"></i> Volver al inicio ahora</button>
+        </section>
 
-        <section id="step-resumen" class="hidden w-full max-w-3xl card-white rounded-3xl p-5 sm:p-8" aria-labelledby="resumen-titulo">
+        <!-- ============ PANTALLA: RESUMEN DE LA ATENCIÓN ============ -->
+        <section id="step-resumen" class="hidden w-full max-w-4xl card-white rounded-3xl p-5 sm:p-8" aria-labelledby="resumen-titulo">
             <header class="border-b-2 border-slate-200 pb-4">
-                <p class="font-bold text-blue-800">Consulta de telemedicina</p>
-                <h2 id="resumen-titulo" tabindex="-1" class="mt-1 text-2xl sm:text-4xl font-black">Resumen de su atención</h2>
+                <p class="font-bold text-blue-800 text-lg md:text-xl">Consulta de telemedicina</p>
+                <h2 id="resumen-titulo" tabindex="-1" class="mt-1 text-3xl sm:text-5xl font-black">Resumen de su atención</h2>
             </header>
-            <p id="resumen-estado" class="mt-4 text-lg font-semibold text-slate-700" role="status"></p>
+            <p id="resumen-estado" class="mt-4 text-xl md:text-2xl font-semibold text-slate-700" role="status"></p>
             <div id="resumen-datos" class="hidden mt-4 space-y-5 [overflow-wrap:anywhere]">
                 <dl class="grid gap-3 sm:grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div><dt class="font-bold text-slate-600">Número de atención</dt><dd id="resumen-id" class="font-mono font-bold"></dd></div>
                     <div><dt class="font-bold text-slate-600">Fecha y hora</dt><dd id="resumen-fecha" class="font-bold"></dd></div>
                 </dl>
-                <section>
-                    <h3 class="text-lg font-black">Diagnóstico</h3>
-                    <p id="resumen-diagnostico" class="mt-1 whitespace-pre-wrap text-lg"></p>
+                <section class="rounded-2xl border-2 border-slate-300 bg-white p-4">
+                    <h3 class="text-2xl md:text-3xl font-black">Diagnóstico</h3>
+                    <p id="resumen-diagnostico" class="mt-2 whitespace-pre-wrap text-2xl md:text-3xl font-semibold"></p>
                 </section>
-                <section class="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
-                    <h3 class="text-xl font-black text-blue-950">Receta e indicaciones</h3>
-                    <p id="resumen-receta" class="mt-2 whitespace-pre-wrap text-lg text-slate-900"></p>
+                <section class="rounded-2xl border-4 border-blue-300 bg-blue-50 p-4">
+                    <h3 class="text-2xl md:text-3xl font-black text-blue-950"><i class="fa-solid fa-prescription-bottle-medical mr-2"></i>Receta e indicaciones</h3>
+                    <p id="resumen-receta" class="mt-2 whitespace-pre-wrap text-2xl md:text-3xl font-semibold text-slate-900"></p>
+                </section>
+                <section id="resumen-chat-bloque" class="hidden rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4">
+                    <h3 class="text-xl md:text-2xl font-black text-emerald-950"><i class="fa-solid fa-comment-medical mr-2"></i>Indicaciones que el médico le escribió</h3>
+                    <ul id="resumen-chat" class="mt-2 list-disc pl-6 space-y-1 text-xl md:text-2xl font-semibold"></ul>
                 </section>
             </div>
-            <div id="resumen-acciones" class="mt-6 flex flex-wrap gap-3">
-                <button id="resumen-imprimir" type="button" onclick="window.print()" class="hidden rounded-xl bg-blue-800 px-5 py-3 text-lg font-bold text-white hover:bg-blue-900">Imprimir resumen</button>
-                <button type="button" onclick="location.reload()" class="rounded-xl border-2 border-slate-400 px-5 py-3 text-lg font-bold text-slate-900 hover:bg-slate-100">Salir y limpiar pantalla</button>
+            <div id="resumen-acciones" class="mt-6 flex flex-col sm:flex-row flex-wrap gap-3">
+                <button id="resumen-escuchar" type="button" onclick="leerResumenEnVoz()" class="btn btn-azul hidden"><i class="fa-solid fa-volume-high"></i> Escuchar en voz alta</button>
+                <button id="resumen-imprimir" type="button" onclick="window.print()" class="btn btn-borde hidden"><i class="fa-solid fa-print"></i> Imprimir</button>
+                <button id="btn-finalizar-salir" type="button" onclick="reiniciarSesion('manual')" class="btn btn-primario !text-2xl sm:flex-1"><i class="fa-solid fa-right-from-bracket"></i> FINALIZAR Y SALIR</button>
             </div>
         </section>
-
     </main>
 
-    <footer id="main-footer" class="text-center text-xs md:text-sm font-bold text-slate-500 flex flex-col sm:flex-row justify-between items-center card-white p-3 md:p-4 rounded-2xl gap-2">
-        <span>Tótem Médico de Fácil Acceso</span>
-        <span class="font-mono text-slate-600">Sistema Adaptado para Adultos Mayores</span>
+    <footer id="main-footer" class="relative z-10 text-center text-sm md:text-base font-bold text-slate-700 flex flex-col sm:flex-row justify-between items-center card-white p-3 rounded-2xl gap-1">
+        <span>¿Necesita ayuda? Acérquese al mesón de informaciones.</span>
+        <span class="font-mono text-slate-600">Diseñado para ser fácil de usar</span>
     </footer>
 
+    <!-- ============ AVISO DE INACTIVIDAD (aparece 30 s antes de reiniciar) ============ -->
+    <div id="aviso-inactividad" class="hidden fixed inset-0 z-50 bg-slate-950/85 flex items-center justify-center p-4" role="alertdialog" aria-modal="true" aria-labelledby="aviso-titulo">
+        <div class="card-white rounded-3xl p-6 md:p-10 max-w-2xl w-full text-center">
+            <i class="fa-solid fa-clock text-7xl text-amber-600 mb-3" aria-hidden="true"></i>
+            <h2 id="aviso-titulo" class="text-3xl md:text-4xl font-black">¿Sigue ahí?</h2>
+            <p class="text-xl md:text-2xl font-semibold text-slate-800 mt-3">Por inactividad, su sesión se reiniciará en <span id="aviso-segundos" class="font-black text-red-800 text-3xl">30</span> segundos y volverá al inicio.</p>
+            <button id="btn-sigo-aqui" type="button" onclick="Inactividad.reiniciar()" class="btn btn-primario w-full mt-6"><i class="fa-solid fa-hand"></i> SÍ, SIGO AQUÍ</button>
+        </div>
+    </div>
+
     <script>
-        let rutRaw = "";
-        let chatStep = 0;
-        let conversationHistory = [];
-        let isSeniorMode = false;
-        let recognition = null;
-        let isListening = false;
-        let isDerivando = false;
-        let enviandoRespuesta = false;
+    // =====================================================================
+    //  CONFIGURACIÓN (todo lo "ajustable" está aquí arriba)
+    // =====================================================================
+    // Para pruebas/demos se pueden acortar los tiempos por URL, en segundos:
+    //   /?inactividad=20&espera=15&escaneo=3&sensores=3
+    const _params = new URLSearchParams(location.search);
+    const _seg = (clave, porDefecto) => {
+        const v = Number(_params.get(clave));
+        return Number.isFinite(v) && v > 0 ? v * 1000 : porDefecto;
+    };
+    const CONFIG = {
+        INACTIVIDAD_MS: _seg('inactividad', 5 * 60 * 1000),   // 5 min sin tocar el tótem (escaneo / chat)
+        AVISO_FINAL_MS: Math.min(30 * 1000, _seg('inactividad', 5 * 60 * 1000) / 2),  // cuenta regresiva de aviso
+        ESPERA_MEDICO_MS: _seg('espera', 5 * 60 * 1000),      // 5 min máximo esperando al médico
+        RUT_ESTRICTO: false,                                  // false = acepta cualquier RUT con formato válido (demo). Debe coincidir con RUT_ESTRICTO del .env
+        ESCANEO_MS: _seg('escaneo', 5000),                    // cámara térmica: 5 s (solo temperatura)
+        SENSORES_MS: _seg('sensores', 7000),                  // oxímetro + brazalete: 7 s
+        VOLVER_INICIO_TRAS_TIMEOUT_MS: 10 * 1000,
+        MENSAJE_TIMEOUT: 'Tiempo de espera finalizado, por favor intente nuevamente o acérquese a mesón',
+        SALUDO_IA: 'Hola, cuénteme por favor: <strong>¿qué síntoma o molestia principal tiene hoy?</strong> Puede hablar por el micrófono o tocar una opción.',
+    };
 
-        let localStream = null;
-        let peerConnection = null;
-        let telemedicinaWS = null;
-        let llamadaTotem = null;
-        let accesoResumen = null;
+    // Servidores STUN/TURN para la videollamada (WebRTC)
+    const rtcConfig = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'turn:global.relay.metered.ca:80', username: 'ff8bce3de1287e26b2c03d14', credential: 'SFY6xDpAylcsZI+B' },
+            { urls: 'turn:global.relay.metered.ca:443', username: 'ff8bce3de1287e26b2c03d14', credential: 'SFY6xDpAylcsZI+B' },
+            { urls: 'turn:global.relay.metered.ca:443?transport=tcp', username: 'ff8bce3de1287e26b2c03d14', credential: 'SFY6xDpAylcsZI+B' },
+        ]
+    };
 
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                {
-                    urls: 'turn:global.relay.metered.ca:80',
-                    username: 'ff8bce3de1287e26b2c03d14',
-                    credential: 'SFY6xDpAylcsZI+B'
-                },
-                {
-                    urls: 'turn:global.relay.metered.ca:443',
-                    username: 'ff8bce3de1287e26b2c03d14',
-                    credential: 'SFY6xDpAylcsZI+B'
-                },
-                {
-                    urls: 'turn:global.relay.metered.ca:443?transport=tcp',
-                    username: 'ff8bce3de1287e26b2c03d14',
-                    credential: 'SFY6xDpAylcsZI+B'
-                }
-            ]
-        };
+    // =====================================================================
+    //  ESTADO DE LA SESIÓN DEL PACIENTE (se limpia por completo en reiniciarSesion)
+    // =====================================================================
+    let rutRaw = '';
+    let chatStep = 0;
+    let conversationHistory = [];
+    let accesoResumen = null;     // código secreto de 64 hex que identifica ESTA atención
+    let signosVitales = null;     // {temp_c, spo2, fc_lpm, pa_sis, pa_dia, simulado} o null (cámara térmica + sensores)
+    let lecturaTermica = null;    // {temp_c} de la cámara térmica
+    let lecturaSensores = null;   // {spo2, fc_lpm, pa_sis, pa_dia} de oxímetro y brazalete
+    let sensores = null;          // control de la lectura de sensores en curso
+    let temporizadorSinVideo = null, videoRemotoActivo = false;
+    let indicacionesDoctor = [];  // mensajes escritos por el médico durante la llamada
+    let isDerivando = false;
+    let enviandoRespuesta = false;
+    let pantallaActual = 'rut';
 
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'es-CL';
-            recognition.continuous = false;
-            recognition.interimResults = false;
+    let recognition = null, isListening = false;
+    let localStream = null, peerConnection = null, telemedicinaWS = null, llamadaTotem = null;
+    let escaneo = null;           // control del escaneo en curso
+    let medicoConectado = false;
 
-            recognition.onresult = function(event) {
-                if (isDerivando || enviandoRespuesta) return;
-                const text = event.results[0][0].transcript;
-                document.getElementById('user-msg').value = text;
-                stopMicUI();
-                sendUserMessage();
-            };
+    const PANTALLAS = { rut: 'step-rut', escaneo: 'step-escaneo', sensores: 'step-sensores', triage: 'step-triage', llamada: 'step-telemedicina', timeout: 'step-timeout', resumen: 'step-resumen' };
+    const PASO_DE = { rut: 1, escaneo: 2, sensores: 3, triage: 4, llamada: 5 };
+    const NOMBRE_PASO = { 1: 'Su RUT', 2: 'Temperatura', 3: 'Pulso y presión', 4: 'Sus síntomas', 5: 'Médico' };
+    const $ = id => document.getElementById(id);
 
-            recognition.onerror = function(event) {
-                console.error("Error en micrófono:", event.error);
-                stopMicUI();
-            };
+    // =====================================================================
+    //  NAVEGACIÓN ENTRE PANTALLAS
+    // =====================================================================
+    function irAPantalla(nombre) {
+        pantallaActual = nombre;
+        for (const [clave, id] of Object.entries(PANTALLAS)) $(id).classList.toggle('hidden', clave !== nombre);
+        document.body.classList.toggle('pantalla-inicio', nombre === 'rut');
 
-            recognition.onend = function() {
-                stopMicUI();
-            };
-        }
-
-        function toggleVoiceRecognition() {
-            if (isDerivando || enviandoRespuesta) return;
-            if (!recognition) {
-                alert("El navegador del tótem no soporta entrada de voz o requiere permisos de micrófono.");
-                return;
-            }
-            if (!isListening) {
-                try {
-                    recognition.start();
-                    isListening = true;
-                    const btn = document.getElementById('btn-mic');
-                    btn.classList.add('mic-active');
-                    document.getElementById('mic-text').innerText = "Escuchando... Hable ahora";
-                } catch(e) {
-                    console.error(e);
-                }
-            } else {
-                recognition.stop();
-                stopMicUI();
-            }
-        }
-
-        function stopMicUI() {
-            isListening = false;
-            const btn = document.getElementById('btn-mic');
-            if (btn) {
-                btn.classList.remove('mic-active');
-                document.getElementById('mic-text').innerText = "Hablar por Micrófono";
-            }
-        }
-
-        function toggleSeniorMode() {
-            isSeniorMode = !isSeniorMode;
-            document.body.classList.toggle('text-senior');
-            document.getElementById('btn-text-size').innerText = isSeniorMode ? "Tamaño Normal" : "Aumentar Letra";
-        }
-
-        function handleKeyboardInput(input) {
-            let clean = input.value.replace(/[^0-9kK]/g, '').toUpperCase();
-            rutRaw = clean.slice(0, 9);
-            updateDisplay();
-        }
-
-        function pressNum(char) {
-            if (rutRaw.length < 9) {
-                rutRaw += char;
-                updateDisplay();
-            }
-        }
-
-        function clearRut() {
-            rutRaw = "";
-            updateDisplay();
-        }
-
-        function updateDisplay() {
-            if (!rutRaw) { document.getElementById('rut-input').value = ""; return; }
-            let body = rutRaw.slice(0, -1);
-            let dv = rutRaw.slice(-1);
-            let formatted = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            document.getElementById('rut-input').value = rutRaw.length > 1 ? `${formatted}-${dv}` : rutRaw;
-        }
-
-        async function validateAndStart() {
-            if (rutRaw.length < 8) {
-                alert("Por favor ingrese un RUT válido completo (ej: 18.234.567-8).");
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/v1/iniciar-consulta', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ rut: document.getElementById('rut-input').value })
-                });
-
-                if (!res.ok) {
-                    alert("RUT chileno inválido. Verifique el número e inténtelo de nuevo.");
-                    return;
-                }
-            } catch(err) {
-                alert("No se pudo conectar con el servicio. Intente nuevamente.");
-                return;
-            }
-
-            accesoResumen = Array.from(crypto.getRandomValues(new Uint8Array(32)), byte =>
-                byte.toString(16).padStart(2, '0')
-            ).join('');
-            document.getElementById('step-rut').classList.add('hidden');
-            document.getElementById('step-triage').classList.remove('hidden');
-            document.getElementById('step-triage').scrollIntoView({ block: 'start' });
-            document.getElementById('rut-status').innerHTML = `<i class="fa-solid fa-user-check text-emerald-600 mr-2"></i>RUT: ${document.getElementById('rut-input').value}`;
-            hablarTexto("Hola, para ayudarle por favor hable por el micrófono o presione una de las opciones en pantalla.");
-        }
-
-        function selectQuickAnswer(answerText) {
-            if (isDerivando || enviandoRespuesta) return;
-            document.getElementById('user-msg').value = answerText;
-            sendUserMessage();
-        }
-
-        function bloquearEntradasTriage() {
-            isDerivando = true;
-            if (isListening && recognition) {
-                recognition.stop();
-                stopMicUI();
-            }
-
-            document.getElementById('user-msg').disabled = true;
-            document.getElementById('btn-send').disabled = true;
-            document.getElementById('btn-mic').disabled = true;
-
-            const quickButtons = document.querySelectorAll('.btn-quick');
-            quickButtons.forEach(btn => {
-                btn.disabled = true;
-                btn.classList.add('opacity-50', 'pointer-events-none');
+        // Indicador "Paso X de 5"
+        const paso = PASO_DE[nombre];
+        $('indicador-pasos').classList.toggle('hidden', !paso);
+        $('indicador-pasos').classList.toggle('md:block', !!paso);
+        if (paso) {
+            $('indicador-texto').textContent = `Paso ${paso} de 5: ${NOMBRE_PASO[paso]}`;
+            document.querySelectorAll('.paso-barra').forEach((barra, i) => {
+                barra.classList.toggle('bg-emerald-600', i < paso);
+                barra.classList.toggle('bg-slate-300', i >= paso);
             });
         }
+        // El control de inactividad solo vigila las pantallas donde el paciente debe actuar.
+        if (nombre === 'escaneo' || nombre === 'sensores' || nombre === 'triage') Inactividad.iniciar(); else Inactividad.detener();
+        window.scrollTo(0, 0);
+    }
 
-        async function sendUserMessage() {
+    function alternarLetraGrande() {
+        const activo = document.documentElement.classList.toggle('letra-grande');
+        $('btn-letra').setAttribute('aria-pressed', String(activo));
+        $('btn-letra-texto').textContent = activo ? 'Letra normal' : 'Letra grande';
+    }
+
+    // =====================================================================
+    //  CONTROL DE INACTIVIDAD (5 min en escaneo / chat → aviso 30 s → reinicio)
+    // =====================================================================
+    const Inactividad = {
+        activa: false, temporizador: null, cuenta: null, avisoVisible: false,
+        iniciar() { this.activa = true; this.reiniciar(); },
+        detener() { this.activa = false; clearTimeout(this.temporizador); clearInterval(this.cuenta); this._ocultarAviso(); },
+        /** Se llama con cada toque/tecla/voz del paciente, o con el botón "Sí, sigo aquí". */
+        reiniciar() {
+            if (!this.activa) return;
+            clearTimeout(this.temporizador);
+            this._ocultarAviso();
+            this.temporizador = setTimeout(() => this._mostrarAviso(), CONFIG.INACTIVIDAD_MS - CONFIG.AVISO_FINAL_MS);
+        },
+        _mostrarAviso() {
+            this.avisoVisible = true;
+            let restante = Math.ceil(CONFIG.AVISO_FINAL_MS / 1000);
+            $('aviso-segundos').textContent = restante;
+            $('aviso-inactividad').classList.remove('hidden');
+            $('btn-sigo-aqui').focus();
+            hablarTexto('¿Sigue ahí? Toque el botón para continuar, o la sesión se reiniciará.');
+            this.cuenta = setInterval(() => {
+                restante--;
+                $('aviso-segundos').textContent = Math.max(restante, 0);
+                if (restante <= 0) { clearInterval(this.cuenta); reiniciarSesion('inactividad'); }
+            }, 1000);
+        },
+        _ocultarAviso() {
+            clearInterval(this.cuenta);
+            this.avisoVisible = false;
+            $('aviso-inactividad').classList.add('hidden');
+        },
+    };
+    // Cualquier interacción real del paciente reinicia el contador (salvo mientras se muestra el aviso).
+    ['pointerdown', 'keydown', 'touchstart', 'input'].forEach(evento =>
+        document.addEventListener(evento, () => { if (!Inactividad.avisoVisible) Inactividad.reiniciar(); }, true));
+
+    // =====================================================================
+    //  CONTROL DE ESPERA DEL MÉDICO (5 min máximo)
+    // =====================================================================
+    const EsperaMedico = {
+        intervalo: null, finEn: 0,
+        iniciar() {
+            this.detener();
+            this.finEn = Date.now() + CONFIG.ESPERA_MEDICO_MS;
+            this._pintar();
+            this.intervalo = setInterval(() => this._pintar(), 250);
+        },
+        detener() { clearInterval(this.intervalo); this.intervalo = null; },
+        _pintar() {
+            const restante = Math.max(0, this.finEn - Date.now());
+            const s = Math.ceil(restante / 1000);
+            $('espera-reloj').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+            $('espera-barra').style.width = (restante / CONFIG.ESPERA_MEDICO_MS * 100) + '%';
+            if (restante <= 0) { this.detener(); esperaAgotada(); }
+        },
+    };
+
+    /** El médico no se conectó a tiempo: libera la cola, avisa al paciente y vuelve al inicio. */
+    async function esperaAgotada() {
+        if (medicoConectado || pantallaActual !== 'llamada') return;
+        await abandonarCola('tiempo_espera');
+        cerrarMediosLlamada(false);
+        irAPantalla('timeout');
+        hablarTexto(CONFIG.MENSAJE_TIMEOUT);
+        let restante = Math.round(CONFIG.VOLVER_INICIO_TRAS_TIMEOUT_MS / 1000);
+        $('timeout-segundos').textContent = restante;
+        clearInterval(esperaAgotada.cuenta);
+        esperaAgotada.cuenta = setInterval(() => {
+            restante--;
+            $('timeout-segundos').textContent = Math.max(restante, 0);
+            if (restante <= 0) reiniciarSesion('manual');
+        }, 1000);
+    }
+
+    async function cancelarEspera() {
+        EsperaMedico.detener();
+        await abandonarCola('cancelado');
+        reiniciarSesion('manual');
+    }
+
+    /** Saca al paciente de la cola del médico (si no lo hacemos quedaría "bloqueado" en su lista). */
+    async function abandonarCola(motivo) {
+        if (!accesoResumen) return;
+        try {
+            await fetch('/api/v1/cola-pacientes/abandonar', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut: $('rut-input').value, acceso_resumen: accesoResumen, motivo }),
+                keepalive: true,
+            });
+        } catch (e) { console.warn('No se pudo actualizar la cola:', e); }
+    }
+
+    // =====================================================================
+    //  REINICIO COMPLETO DE LA SESIÓN (vuelve a ingresar RUT y borra datos temporales)
+    // =====================================================================
+    function reiniciarSesion(motivo) {
+        Inactividad.detener();
+        EsperaMedico.detener();
+        clearInterval(esperaAgotada.cuenta);
+        cancelarEscaneo(); cancelarSensores();
+        clearTimeout(temporizadorResumen); consultarResumenAtencion.anunciado = false;
+        cerrarMediosLlamada(false);
+        if (isListening && recognition) { try { recognition.stop(); } catch (e) {} }
+        detenerMicUI();
+        window.speechSynthesis?.cancel();
+
+        // Datos temporales
+        rutRaw = ''; chatStep = 0; conversationHistory = []; accesoResumen = null; signosVitales = null; lecturaTermica = null; lecturaSensores = null; indicacionesDoctor = [];
+        isDerivando = false; enviandoRespuesta = false; medicoConectado = false;
+
+        // Pantalla RUT
+        $('rut-input').value = ''; $('rut-error').textContent = '';
+        $('rut-status').classList.add('hidden'); $('rut-status').textContent = '';
+        document.body.classList.remove('mostrando-resumen');
+
+        // Chat
+        $('chat-box').innerHTML = ''; agregarMensajeIA(CONFIG.SALUDO_IA, true);
+        $('user-msg').value = ''; $('user-msg').disabled = false; $('user-msg').readOnly = false;
+        $('btn-send').disabled = false; $('btn-mic').disabled = false;
+        $('quick-buttons').classList.remove('hidden');
+        document.querySelectorAll('.btn-quick').forEach(b => { b.disabled = false; b.classList.remove('opacity-50', 'pointer-events-none'); });
+        mostrarEstadoChat('');
+
+        // Escaneo
+        reiniciarUIEscaneo(); reiniciarUISensores();
+        $('llamada-chat-log').innerHTML = ''; mostrarFlex('doctor-sin-video', false);
+
+        // Resumen
+        $('resumen-datos').classList.add('hidden'); $('resumen-imprimir').classList.add('hidden'); $('resumen-escuchar').classList.add('hidden'); $('resumen-chat-bloque').classList.add('hidden'); $('resumen-estado').textContent = '';
+        ['resumen-id', 'resumen-fecha', 'resumen-diagnostico', 'resumen-receta'].forEach(id => $(id).textContent = '');
+
+        irAPantalla('rut');
+        const aviso = $('aviso-inicio');
+        if (motivo === 'inactividad') {
+            aviso.textContent = 'Su sesión se reinició por inactividad. Por favor ingrese su RUT nuevamente.';
+            aviso.classList.remove('hidden');
+            clearTimeout(reiniciarSesion.ocultarAviso);
+            reiniciarSesion.ocultarAviso = setTimeout(() => aviso.classList.add('hidden'), 15000);
+        } else {
+            aviso.classList.add('hidden');
+        }
+    }
+
+    // =====================================================================
+    //  PANTALLA 1 · INGRESO DE RUT
+    // =====================================================================
+    (function crearTeclado() {
+        const teclas = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'K', '0', 'BORRAR'];
+        const cont = $('teclado');
+        teclas.forEach(t => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'tecla' + (t === 'K' ? ' !text-blue-800' : '') + (t === 'BORRAR' ? ' !bg-rose-100 !border-rose-400 !text-rose-800 !text-xl' : '');
+            b.textContent = t === 'BORRAR' ? 'Borrar' : t;
+            b.setAttribute('aria-label', t === 'BORRAR' ? 'Borrar último dígito' : 'Número ' + t);
+            b.addEventListener('click', () => t === 'BORRAR' ? borrarUltimo() : presionarTecla(t));
+            cont.appendChild(b);
+        });
+    })();
+
+    function presionarTecla(c) { if (rutRaw.length < 9) { rutRaw += c; $('rut-error').textContent = ''; mostrarRut(); } }
+    function borrarUltimo() { rutRaw = rutRaw.slice(0, -1); $('rut-error').textContent = ''; mostrarRut(); }
+    function manejarTecladoFisico(input) { rutRaw = input.value.replace(/[^0-9kK]/g, '').toUpperCase().slice(0, 9); $('rut-error').textContent = ''; mostrarRut(); }
+
+    function mostrarRut() {
+        if (!rutRaw) { $('rut-input').value = ''; return; }
+        const cuerpo = rutRaw.slice(0, -1), dv = rutRaw.slice(-1);
+        $('rut-input').value = rutRaw.length > 1 ? `${cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}` : rutRaw;
+    }
+
+    /** Validación módulo 11 (la misma regla que validar_rut_chileno en app.py). */
+    function rutEsValido(rut) {
+        const limpio = rut.replace(/[.\-]/g, '').toUpperCase();
+        if (limpio.length < 2 || !/^\d+[0-9K]$/.test(limpio)) return false;
+        if (!CONFIG.RUT_ESTRICTO) return true;          // demo: solo se revisa el formato
+        let suma = 0, mult = 2;
+        for (const c of limpio.slice(0, -1).split('').reverse()) { suma += Number(c) * mult; mult = mult === 7 ? 2 : mult + 1; }
+        const esperado = 11 - (suma % 11);
+        return limpio.slice(-1) === (esperado === 11 ? '0' : esperado === 10 ? 'K' : String(esperado));
+    }
+
+    async function validarYComenzar() {
+        const error = $('rut-error');
+        if (rutRaw.length < 8 || !rutEsValido(rutRaw)) {
+            error.textContent = 'El RUT no es válido. Revise los números e inténtelo de nuevo.';
+            hablarTexto('El RUT no es válido. Revise los números e inténtelo de nuevo.');
+            return;
+        }
+        $('btn-ingresar').disabled = true;
+        try {
+            const res = await fetch('/api/v1/iniciar-consulta', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut: $('rut-input').value })
+            });
+            if (!res.ok) { error.textContent = 'RUT chileno inválido. Verifique el número.'; return; }
+        } catch (e) {
+            error.textContent = 'No hay conexión con el servicio. Intente de nuevo o pida ayuda en el mesón.';
+            return;
+        } finally { $('btn-ingresar').disabled = false; }
+
+        // Código secreto de esta atención (solo vive en esta pantalla)
+        accesoResumen = Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2, '0')).join('');
+        $('rut-status').innerHTML = '<i class="fa-solid fa-user-check text-emerald-700 mr-2"></i>RUT: ' + $('rut-input').value;
+        $('rut-status').classList.remove('hidden');
+        $('aviso-inicio').classList.add('hidden');
+        irAPantalla('escaneo');
+        hablarTexto('Ahora mediremos sus signos vitales. Presione el botón comenzar medición y mire a la cámara.');
+    }
+
+    // =====================================================================
+    //  PANTALLA 2 · CÁMARA TÉRMICA SIMULADA (mide SOLO la temperatura corporal)
+    //  La cámara es real (getUserMedia) y se pinta como mapa de calor en un <canvas>
+    //  (azul = frío → verde → amarillo → rojo = caliente). La temperatura es SIMULADA:
+    //  para conectar una cámara térmica real, reemplace `generarTemperatura()`.
+    //  Oxígeno, pulso y presión NO se miden aquí: vienen de la pantalla de sensores.
+    // =====================================================================
+    function aleatorioNormal(media, desv) {                 // distribución normal (Box-Muller)
+        const u = 1 - Math.random(), v = Math.random();
+        return media + desv * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    const acotar = (x, min, max) => Math.min(max, Math.max(min, x));
+    const entre = (min, max) => min + Math.random() * (max - min);
+
+    /** Temperatura corporal simulada: casi siempre normal y, a veces (~10 %), levemente alta. */
+    function generarTemperatura() {
+        let t = acotar(aleatorioNormal(36.7, 0.3), 36.0, 37.4);
+        if (Math.random() < 0.10) t = entre(37.6, 38.6);
+        return Math.round(t * 10) / 10;
+    }
+
+    // Paleta de calor: 256 colores interpolados entre azul, verde, amarillo y rojo.
+    const PALETA_TERMICA = (() => {
+        const paradas = [[0, [10, 26, 140]], [0.33, [0, 170, 90]], [0.66, [250, 220, 40]], [1, [230, 30, 30]]];
+        return Array.from({ length: 256 }, (_, i) => {
+            const t = i / 255;
+            let k = 0; while (k < paradas.length - 2 && t > paradas[k + 1][0]) k++;
+            const [t0, c0] = paradas[k], [t1, c1] = paradas[k + 1], f = (t - t0) / (t1 - t0);
+            return c0.map((c, j) => Math.round(c + (c1[j] - c) * f));
+        });
+    })();
+    const TERMICA_W = 160, TERMICA_H = 100;
+    let _termicaTmp = null;
+
+    /** Dibuja un fotograma del video como mapa de calor. El rostro (centro) se pinta más "caliente". */
+    function dibujarTermica(video, ahora) {
+        const canvas = $('scan-termica');
+        if (canvas.width !== TERMICA_W) { canvas.width = TERMICA_W; canvas.height = TERMICA_H; }
+        if (!_termicaTmp) { _termicaTmp = document.createElement('canvas'); _termicaTmp.width = TERMICA_W; _termicaTmp.height = TERMICA_H; }
+        const tctx = _termicaTmp.getContext('2d', { willReadFrequently: true });
+        if (video.readyState >= 2) tctx.drawImage(video, 0, 0, TERMICA_W, TERMICA_H);
+        else { tctx.fillStyle = '#303030'; tctx.fillRect(0, 0, TERMICA_W, TERMICA_H); }
+        const img = tctx.getImageData(0, 0, TERMICA_W, TERMICA_H), d = img.data;
+        const cx = TERMICA_W / 2, cy = TERMICA_H * 0.5;
+        for (let y = 0; y < TERMICA_H; y++) {
+            const dy = (y - cy) / (TERMICA_H * 0.40);
+            for (let x = 0; x < TERMICA_W; x++) {
+                const i = (y * TERMICA_W + x) * 4;
+                const luz = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255;
+                const dx = (x - cx) / (TERMICA_W * 0.22);
+                const foco = Math.exp(-(dx * dx + dy * dy));           // zona del rostro
+                const calor = acotar(0.10 + 0.40 * luz + 0.50 * foco + 0.03 * Math.sin(ahora / 300 + x * 0.3 + y * 0.2), 0, 1);
+                const c = PALETA_TERMICA[Math.round(calor * 255)];
+                d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+            }
+        }
+        canvas.getContext('2d').putImageData(img, 0, 0);
+    }
+
+    const MENSAJES_ESCANEO = [
+        [0, 'Mire de frente a la cámara'], [25, 'Quédese quieto/a, por favor'],
+        [55, 'Midiendo su temperatura…'], [85, '¡Listo en un instante!'],
+    ];
+    const formatearTemp = t => t.toFixed(1).replace('.', ',') + ' °C';
+
+    function reiniciarUIEscaneo() {
+        $('visor').classList.remove('escaneando', 'termico');
+        $('scan-video').srcObject = null;
+        const c = $('scan-termica'); c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        $('visor-temp').textContent = '--,- °C';
+        $('visor-vacio').classList.remove('hidden');
+        $('visor-icono').className = 'fa-solid fa-camera text-6xl opacity-80'; $('visor-texto').textContent = 'La cámara térmica se activará al comenzar';
+        $('scan-barra').style.width = '0%'; $('scan-progreso').setAttribute('aria-valuenow', '0');
+        $('scan-mensaje').textContent = ''; $('scan-tiempo').textContent = '';
+        $('scan-error').classList.add('hidden'); $('scan-demo').classList.add('hidden');
+        $('v-temp').textContent = '—';
+        const li = document.querySelector('[data-vital="temp"]'); li.classList.remove('midiendo', 'listo'); li.querySelector('.estado').innerHTML = '';
+        $('btn-scan-iniciar').classList.remove('hidden'); $('btn-scan-iniciar').disabled = false;
+        $('btn-scan-iniciar').innerHTML = '<i class="fa-solid fa-play"></i> COMENZAR MEDICIÓN';
+        $('btn-scan-continuar').classList.add('hidden'); $('btn-scan-omitir').classList.add('hidden');
+    }
+
+    function cancelarEscaneo() {
+        if (!escaneo) return;
+        cancelAnimationFrame(escaneo.raf);
+        escaneo.stream?.getTracks().forEach(t => t.stop());
+        escaneo = null;
+    }
+
+    async function iniciarEscaneo() {
+        $('btn-scan-iniciar').disabled = true;
+        $('scan-error').classList.add('hidden');
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
+        } catch (e) {
+            console.warn('Cámara no disponible:', e);
+            const err = $('scan-error');
+            err.textContent = 'No pudimos usar la cámara. Revise que esté permitida, o continúe sin la medición.';
+            err.classList.remove('hidden');
+            $('btn-scan-iniciar').disabled = false; $('btn-scan-iniciar').innerHTML = '<i class="fa-solid fa-rotate-right"></i> REINTENTAR';
+            $('btn-scan-omitir').classList.remove('hidden');
+            hablarTexto('No pudimos usar la cámara. Puede reintentar o continuar sin la medición.');
+            return;
+        }
+        if (pantallaActual !== 'escaneo') { stream.getTracks().forEach(t => t.stop()); return; }   // el paciente salió mientras se pedía permiso
+
+        const video = $('scan-video');
+        video.srcObject = stream;
+        $('visor-vacio').classList.add('hidden');
+        $('visor').classList.add('escaneando', 'termico');           // activa el filtro térmico
+        $('btn-scan-iniciar').classList.add('hidden'); $('btn-scan-omitir').classList.add('hidden');
+        document.querySelector('[data-vital="temp"]').classList.add('midiendo');
+        document.querySelector('[data-vital="temp"] .estado').innerHTML = '<i class="fa-solid fa-spinner fa-spin text-blue-800"></i>';
+
+        const duracion = CONFIG.ESCANEO_MS;                           // 5 s por defecto
+        const inicio = performance.now();
+        const tempFinal = generarTemperatura();
+        escaneo = { stream, raf: 0, tempFinal };
+
+        const paso = ahora => {
+            if (!escaneo) return;
+            const progreso = Math.min(100, (ahora - inicio) / duracion * 100);
+            dibujarTermica(video, ahora);
+            // Lectura "en vivo": oscila y converge hacia el valor final
+            const ruido = (1 - progreso / 100) * 1.2 * Math.sin(ahora / 90);
+            const vivo = progreso >= 100 ? tempFinal : acotar(tempFinal + ruido, 34, 42);
+            $('visor-temp').textContent = formatearTemp(vivo); $('v-temp').textContent = formatearTemp(vivo);
+            $('scan-barra').style.width = progreso + '%';
+            $('scan-progreso').setAttribute('aria-valuenow', Math.round(progreso));
+            $('scan-tiempo').textContent = `Quedan ${Math.max(0, Math.ceil((duracion - (ahora - inicio)) / 1000))} s`;
+            const msg = [...MENSAJES_ESCANEO].reverse().find(([desde]) => progreso >= desde)[1];
+            if ($('scan-mensaje').textContent !== msg) $('scan-mensaje').textContent = msg;
+            if (progreso >= 100) { finalizarEscaneo(); return; }
+            escaneo.raf = requestAnimationFrame(paso);
+        };
+        escaneo.raf = requestAnimationFrame(paso);
+    }
+
+    function finalizarEscaneo() {
+        const tempFinal = escaneo?.tempFinal ?? generarTemperatura();
+        cancelarEscaneo();                                            // apaga la cámara; el último fotograma térmico queda en pantalla
+        $('visor').classList.remove('escaneando');
+        lecturaTermica = { temp_c: tempFinal };
+        $('visor-temp').textContent = formatearTemp(tempFinal);
+        $('v-temp').textContent = formatearTemp(tempFinal);
+        const li = document.querySelector('[data-vital="temp"]');
+        li.classList.remove('midiendo'); li.classList.add('listo'); li.querySelector('.estado').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-700"></i>';
+        $('scan-barra').style.width = '100%';
+        $('scan-mensaje').textContent = '¡Temperatura medida!';
+        $('scan-tiempo').textContent = '';
+        $('scan-demo').classList.remove('hidden');
+        $('btn-scan-continuar').classList.remove('hidden'); $('btn-scan-continuar').focus();
+        hablarTexto('Temperatura medida. Presione continuar.');
+    }
+
+    function omitirEscaneo() { lecturaTermica = null; continuarASensores(); }
+
+    function continuarASensores() {
+        cancelarEscaneo();
+        reiniciarUISensores();
+        irAPantalla('sensores');
+        hablarTexto('Ahora ponga el dedo en el oxímetro y el brazo en el brazalete, y presione comenzar lectura.');
+    }
+
+    function volverAEscaneo() {
+        cancelarSensores();
+        reiniciarUIEscaneo(); lecturaTermica = null;
+        irAPantalla('escaneo');
+    }
+
+    // =====================================================================
+    //  PANTALLA 3 · SENSORES PERIFÉRICOS SIMULADOS (oxímetro de dedo + brazalete de presión)
+    //  Módulo SEPARADO de la cámara térmica. Entrega saturación, pulso y presión arterial.
+    //  Para conectar sensores reales, reemplace `generarLecturaSensores()`.
+    // =====================================================================
+    function generarLecturaSensores() {
+        let spo2 = acotar(Math.round(aleatorioNormal(97.5, 1.0)), 95, 100);
+        let fc = acotar(Math.round(aleatorioNormal(76, 9)), 58, 98);
+        let sis = acotar(Math.round(aleatorioNormal(122, 9)), 102, 138);
+        let dia = acotar(Math.round(aleatorioNormal(77, 6)), 64, 88);
+        if (Math.random() < 0.12) {
+            switch (Math.floor(Math.random() * 3)) {
+                case 0: spo2 = Math.round(entre(92, 94)); break;
+                case 1: fc = Math.round(entre(101, 114)); break;
+                case 2: sis = Math.round(entre(142, 156)); dia = Math.round(entre(90, 98)); break;
+            }
+        }
+        dia = Math.min(dia, sis - 25);
+        return { spo2, fc_lpm: fc, pa_sis: sis, pa_dia: dia };
+    }
+
+    /** Junta la temperatura (cámara térmica) con los sensores en el objeto que viaja a `instrumentos`. */
+    function armarSignosVitales() {
+        if (!lecturaTermica || !lecturaSensores) return null;       // el servidor exige los 4 valores juntos
+        return { temp_c: lecturaTermica.temp_c, ...lecturaSensores, simulado: true };
+    }
+
+    function reiniciarUISensores() {
+        ['sensor-oximetro', 'sensor-brazalete'].forEach(id => $(id).classList.remove('activo', 'listo'));
+        $('sens-spo2').textContent = '—'; $('sens-fc').textContent = '—';
+        $('sens-pa-vivo').textContent = '0'; $('sens-pa').textContent = '—'; $('sens-manometro').style.width = '0%';
+        $('sens-ox-estado').textContent = 'Esperando…'; $('sens-br-estado').textContent = 'Esperando…';
+        $('sens-mensaje').textContent = ''; $('sens-barra').style.width = '0%'; $('sens-progreso').setAttribute('aria-valuenow', '0');
+        $('sens-demo').classList.add('hidden');
+        $('btn-sens-iniciar').classList.remove('hidden'); $('btn-sens-iniciar').disabled = false;
+        $('btn-sens-omitir').classList.remove('hidden'); $('btn-sens-continuar').classList.add('hidden');
+    }
+
+    function cancelarSensores() {
+        if (!sensores) return;
+        cancelAnimationFrame(sensores.raf);
+        sensores = null;
+    }
+
+    function iniciarSensores() {
+        if (sensores) return;
+        const lec = generarLecturaSensores();
+        const duracion = CONFIG.SENSORES_MS;
+        const inicio = performance.now();
+        let ultimaPintura = 0;
+        $('btn-sens-iniciar').classList.add('hidden'); $('btn-sens-omitir').classList.add('hidden');
+        ['sensor-oximetro', 'sensor-brazalete'].forEach(id => $(id).classList.add('activo'));
+        $('sens-ox-estado').textContent = 'Leyendo pulso y oxígeno…'; $('sens-br-estado').textContent = 'Inflando el brazalete…';
+        hablarTexto('Midiendo. Quédese quieto, por favor.');
+        sensores = { raf: 0 };
+        const pico = lec.pa_sis + 35;                                  // el brazalete infla por encima de la sistólica
+
+        const paso = ahora => {
+            if (!sensores) return;
+            const p = Math.min(1, (ahora - inicio) / duracion);
+            if (ahora - ultimaPintura > 150 || p >= 1) {                // se actualiza ~6 veces por segundo (cifras legibles)
+                ultimaPintura = ahora;
+                // Oxímetro: se estabiliza al 80 % del tiempo
+                const po = Math.min(1, p / 0.8), inestable = 1 - po;
+                const spo2 = po >= 1 ? lec.spo2 : Math.min(100, Math.round(lec.spo2 - 3 * inestable + (Math.random() - .5) * 4 * inestable));
+                const fc = po >= 1 ? lec.fc_lpm : Math.round(lec.fc_lpm + (Math.random() - .5) * 30 * inestable);
+                $('sens-spo2').textContent = spo2; $('sens-fc').textContent = fc;
+                if (po >= 1) $('sens-ox-estado').textContent = 'Lectura lista ✔';
+                // Brazalete: infla (0–55 %) y desinfla hasta la diastólica (55–100 %)
+                const presion = p < 0.55 ? (p / 0.55) * pico : pico - ((p - 0.55) / 0.45) * (pico - lec.pa_dia);
+                $('sens-pa-vivo').textContent = Math.round(presion);
+                $('sens-manometro').style.width = acotar(presion / 200 * 100, 0, 100) + '%';
+                if (p >= 0.55 && p < 1) $('sens-br-estado').textContent = 'Desinflando y midiendo…';
+            }
+            $('sens-barra').style.width = (p * 100) + '%';
+            $('sens-progreso').setAttribute('aria-valuenow', Math.round(p * 100));
+            $('sens-mensaje').textContent = p < 0.55 ? 'No mueva el brazo ni el dedo' : (p < 1 ? 'Ya casi… siga quieto/a' : '');
+            if (p >= 1) { finalizarSensores(lec); return; }
+            sensores.raf = requestAnimationFrame(paso);
+        };
+        sensores.raf = requestAnimationFrame(paso);
+    }
+
+    function finalizarSensores(lec) {
+        cancelarSensores();
+        lecturaSensores = lec;
+        ['sensor-oximetro', 'sensor-brazalete'].forEach(id => { $(id).classList.remove('activo'); $(id).classList.add('listo'); });
+        $('sens-spo2').textContent = lec.spo2; $('sens-fc').textContent = lec.fc_lpm;
+        $('sens-pa-vivo').textContent = lec.pa_dia; $('sens-manometro').style.width = '0%';
+        $('sens-pa').textContent = `${lec.pa_sis}/${lec.pa_dia}`;
+        $('sens-ox-estado').textContent = 'Lectura lista ✔'; $('sens-br-estado').textContent = 'Lectura lista ✔';
+        $('sens-mensaje').textContent = '¡Mediciones completas!'; $('sens-barra').style.width = '100%';
+        $('sens-demo').classList.remove('hidden');
+        $('btn-sens-continuar').classList.remove('hidden'); $('btn-sens-continuar').focus();
+        hablarTexto('Mediciones completas. Presione continuar.');
+    }
+
+    function omitirSensores() { lecturaSensores = null; continuarAlChat(); }
+
+    function continuarAlChat() {
+        cancelarEscaneo(); cancelarSensores();
+        signosVitales = armarSignosVitales();                          // los 4 valores juntos (o null si se omitió algo)
+        irAPantalla('triage');
+        hablarTexto('Cuénteme, ¿qué síntoma o molestia principal tiene hoy? Puede hablar por el micrófono o presionar una opción.');
+        $('user-msg').focus({ preventScroll: true });
+    }
+
+    // =====================================================================
+    //  PANTALLA 3 · CHAT: VALIDACIÓN DE MENSAJES (espejo de servicios/filtro_texto.py)
+    //  ¡Mantener sincronizado con el backend! El servidor siempre valida de nuevo.
+    // =====================================================================
+    const FILTRO = {
+        LARGO_MAX: 500,
+        exactas: ['puta','putas','puto','putos','putamadre','hdp','ctm','csm','mrd','verga','carajo','chucha','culiao','culiado','weon','weona','huevon','hueon','aweonao','conchetumare','conchesumadre','zorra','maricon','cabron','pendejo','pelotudo','imbecil','idiota','estupido','estupida','basuras','mierda','mierdas'],
+        prefijos: ['weon','hueon','aweon','culia','conchetu','conchesu','mierd','pendej','imbecil','idiot','estupid','maricon','chucha','putamadre'],
+        relleno: ['hola','holi','buenas','buenos','ok','okey','oka','test','prueba','xd','jaja','jeje','jiji','jaj','hmm','hm','eh','ehh','em','este','nada','algo','cosa','cosas','bien','gracias','chao','adios','ola','hey','alo','a','e','o','y'],
+        filas: ['qwertyuiop', 'asdfghjklñ', 'zxcvbnm'],
+        mensajes: {
+            vacio: 'Por favor, cuéntenos qué molestia tiene hoy. Puede escribirla o hablarla por el micrófono.',
+            groseria: 'Entendemos que puede sentirse mal. Le pedimos usar un lenguaje respetuoso y contarnos con calma qué siente.',
+            sinsentido: 'No logramos entender su mensaje. ¿Podría describir con claridad qué siente? Por ejemplo: «me duele la cabeza desde ayer».',
+            irrelevante: 'Para ayudarle necesitamos saber qué molestia tiene. Por ejemplo: «tengo tos y fiebre desde ayer».',
+        },
+    };
+    const _colapsar = s => s.replace(/(.)\1+/g, '$1');
+    const _EXACTAS = new Set(FILTRO.exactas.map(_colapsar));
+    const _PREFIJOS = FILTRO.prefijos.map(_colapsar);
+    const _sinTildes = s => s.toLowerCase().normalize('NFD').replace(/ñ/g, 'ñ').replace(/[̀-ͯ]/g, '');
+    const _LEET = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', '$': 's' };
+
+    function limpiarTexto(t) {
+        return (t || '').replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '').replace(/\s+/g, ' ').trim().slice(0, FILTRO.LARGO_MAX);
+    }
+    function _tieneGroseria(normal) {
+        for (let p of (normal.match(/[a-zñ0-9@$]+/g) || [])) {
+            if (/[a-zñ]/.test(p)) p = p.replace(/[013457@$]/g, c => _LEET[c]);
+            p = _colapsar(p);
+            if (_EXACTAS.has(p) || _PREFIJOS.some(pre => p.startsWith(pre))) return true;
+        }
+        return false;
+    }
+    function _esTeclazo(p) {
+        if (p.length < 4) return false;
+        return FILTRO.filas.some(fila => [fila, [...fila].reverse().join('')].some(t => { for (let i = 0; i <= t.length - 4; i++) if (p.includes(t.slice(i, i + 4))) return true; return false; }));
+    }
+    function _palabraSinSentido(p) {
+        if (p.length >= 5 && !/[aeiou]/.test(p)) return true;          // "bcdfgh"
+        if (p.length >= 6 && new Set(p).size <= 2) return true;        // "ababab"
+        return _esTeclazo(p);                                          // "asdfgh"
+    }
+    function validarMensaje(texto) {
+        const limpio = limpiarTexto(texto);
+        const no = codigo => ({ valido: false, texto: limpio, codigo, mensaje: FILTRO.mensajes[codigo] });
+        if (!limpio) return no('vacio');
+        let normal = _sinTildes(limpio);
+        const letras = normal.replace(/[^a-zñ]/g, '');
+        if (letras.length < 2) return no('sinsentido');                // solo números / símbolos
+        if (_tieneGroseria(normal)) return no('groseria');
+        if (/(.)\1{3,}/.test(normal)) return no('sinsentido');         // "aaaaa"
+        normal = normal.replace(/buen[oa]s (dias|tardes|noches)/g, ' ');
+        const palabras = normal.match(/[a-zñ]+/g) || [];
+        if (palabras.some(_palabraSinSentido)) return no('sinsentido');
+        if (letras.length / Math.max(1, normal.replace(/\s/g, '').length) < 0.5) return no('sinsentido');
+        if (!palabras.some(p => !FILTRO.relleno.includes(p))) return no('irrelevante');
+        return { valido: true, texto: limpio, codigo: '', mensaje: '' };
+    }
+
+    // =====================================================================
+    //  CHAT: burbujas, envío, voz
+    // =====================================================================
+    function agregarMensajeIA(html, esHtmlSeguro = false) {
+        const fila = document.createElement('div');
+        fila.className = 'flex gap-3 md:gap-4';
+        fila.innerHTML = `<div class="w-12 h-12 rounded-full bg-blue-800 text-white flex items-center justify-center font-black text-lg shrink-0 shadow">IA</div>
+            <div data-ai-message class="bg-blue-50 border-2 border-blue-300 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-xl md:text-2xl font-semibold max-w-[88%] shadow-sm"></div>`;
+        const burbuja = fila.querySelector('[data-ai-message]');
+        if (esHtmlSeguro) burbuja.innerHTML = html; else burbuja.textContent = html;   // el texto de la IA nunca se interpreta como HTML
+        $('chat-box').appendChild(fila);
+        $('chat-box').scrollTop = $('chat-box').scrollHeight;
+    }
+    function agregarMensajeUsuario(texto) {
+        const fila = document.createElement('div');
+        fila.className = 'flex gap-4 justify-end';
+        fila.innerHTML = '<div class="bg-slate-800 text-white p-4 md:p-5 rounded-3xl rounded-tr-none text-xl md:text-2xl font-bold max-w-[88%] shadow-sm"></div>';
+        fila.firstElementChild.textContent = texto;
+        $('chat-box').appendChild(fila);
+        $('chat-box').scrollTop = $('chat-box').scrollHeight;
+        return fila;
+    }
+    function mostrarEstadoChat(texto, esError = false) {
+        const el = $('chat-status');
+        el.textContent = texto;
+        el.classList.toggle('hidden', !texto);
+        el.classList.toggle('estado-error', esError);
+    }
+
+    function seleccionarRespuestaRapida(texto) {
+        if (isDerivando || enviandoRespuesta) return;
+        $('user-msg').value = texto;
+        enviarMensaje();
+    }
+
+    function bloquearEntradasTriage() {
+        isDerivando = true;
+        if (isListening && recognition) { recognition.stop(); detenerMicUI(); }
+        $('user-msg').disabled = true; $('btn-send').disabled = true; $('btn-mic').disabled = true;
+        document.querySelectorAll('.btn-quick').forEach(b => { b.disabled = true; b.classList.add('opacity-50', 'pointer-events-none'); });
+    }
+
+    async function enviarMensaje() {
+        if (isDerivando || enviandoRespuesta) return;
+        const input = $('user-msg');
+
+        // 1) Validación inmediata en el tótem (groserías, texto sin sentido, vacío...)
+        const filtro = validarMensaje(input.value);
+        if (!filtro.valido) {
+            mostrarEstadoChat(filtro.mensaje, true);
+            hablarTexto(filtro.mensaje);
+            input.focus();
+            return;
+        }
+        const text = filtro.texto;
+        enviandoRespuesta = true;
+        input.readOnly = true; $('btn-send').disabled = true;
+        mostrarEstadoChat('Procesando su respuesta…');
+        const burbujaUsuario = agregarMensajeUsuario(text);
+        input.value = '';
+        chatStep++;
+        conversationHistory.push({ role: 'user', content: text });
+
+        try {
+            const res = await fetch('/api/v1/chat-evaluacion', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rut: $('rut-input').value || rutRaw, mensaje: text, paso: chatStep,
+                    historial: conversationHistory, acceso_resumen: accesoResumen,
+                    signos_vitales: signosVitales,
+                })
+            });
+            if (res.status === 409) throw new Error('Ya hay una atención para este RUT. Solicite ayuda al personal.');
+            if (res.status === 422) {                             // el servidor rechazó el mensaje (filtro del backend)
+                const err = await res.json().catch(() => ({}));
+                const e = new Error(err?.detail?.mensaje || FILTRO.mensajes.sinsentido); e.esFiltro = true; throw e;
+            }
+            if (!res.ok) throw new Error('No se pudo enviar. Pulse Enviar para reintentar.');
+            const data = await res.json();
+
+            agregarMensajeIA(data.respuesta_ia);
+            hablarTexto(data.respuesta_ia);
+            mostrarEstadoChat('');
+            $('quick-buttons').classList.add('hidden');
+            conversationHistory.push({ role: 'assistant', content: data.respuesta_ia });
+
+            if (data.siguiente_accion === 'MOSTRAR_RESUMEN') {
+                bloquearEntradasTriage();
+                mostrarResumenAtencion();
+            } else if (data.siguiente_accion === 'DERIVAR_TELEMEDICINA') {
+                bloquearEntradasTriage();
+                setTimeout(() => { if (pantallaActual === 'triage') entrarEnEspera(); }, 2500);
+            }
+        } catch (err) {
+            chatStep--; conversationHistory.pop(); burbujaUsuario.remove();
+            input.value = text;
+            mostrarEstadoChat(err instanceof TypeError ? 'No se pudo enviar. Pulse Enviar para reintentar.' : err.message, true);
+            if (err.esFiltro) hablarTexto(err.message);
+        } finally {
+            enviandoRespuesta = false; input.readOnly = false;
+            if (!isDerivando) $('btn-send').disabled = false;
+        }
+    }
+
+    // --- Voz: reconocimiento y lectura en voz alta ---
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SR();
+        recognition.lang = 'es-CL'; recognition.continuous = false; recognition.interimResults = false;
+        recognition.onresult = e => {
             if (isDerivando || enviandoRespuesta) return;
-
-            const input = document.getElementById('user-msg');
-            const text = input.value.trim();
-            if (!text) return;
-
-            const chatBox = document.getElementById('chat-box');
-            const estado = document.getElementById('chat-status');
-            enviandoRespuesta = true;
-            input.readOnly = true;
-            document.getElementById('btn-send').disabled = true;
-            estado.textContent = 'Procesando su respuesta…';
-
-            const userBubble = document.createElement('div');
-            userBubble.className = "flex gap-4 justify-end";
-            userBubble.innerHTML = `
-                <div class="bg-slate-800 text-white p-4 md:p-5 rounded-3xl rounded-tr-none text-base md:text-xl font-bold max-w-[85%] shadow-sm">
-                </div>
-            `;
-            userBubble.firstElementChild.textContent = text;
-            chatBox.appendChild(userBubble);
-            input.value = "";
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            chatStep++;
-            conversationHistory.push({ role: 'user', content: text });
-
+            $('user-msg').value = e.results[0][0].transcript;
+            detenerMicUI(); Inactividad.reiniciar(); enviarMensaje();
+        };
+        recognition.onerror = e => { console.error('Error en micrófono:', e.error); detenerMicUI(); };
+        recognition.onend = () => detenerMicUI();
+    }
+    function alternarReconocimientoVoz() {
+        if (isDerivando || enviandoRespuesta) return;
+        if (!recognition) { mostrarEstadoChat('Este tótem no permite hablar por micrófono. Por favor escriba su respuesta.', true); return; }
+        if (!isListening) {
             try {
-                const res = await fetch('/api/v1/chat-evaluacion', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        rut: document.getElementById('rut-input').value || rutRaw, 
-                        mensaje: text, 
-                        paso: chatStep,
-                        historial: conversationHistory,
-                        acceso_resumen: accesoResumen
-                    })
-                });
-                if (res.status === 409) {
-                    throw new Error('Ya hay una atención para este RUT. Solicite ayuda al personal.');
-                }
-                if (!res.ok) throw new Error('No se pudo enviar. Pulse Enviar para reintentar.');
-                const data = await res.json();
+                recognition.start(); isListening = true;
+                $('btn-mic').classList.add('mic-active'); $('mic-text').textContent = 'Escuchando…';
+            } catch (e) { console.error(e); }
+        } else { recognition.stop(); detenerMicUI(); }
+    }
+    function detenerMicUI() {
+        isListening = false;
+        $('btn-mic').classList.remove('mic-active');
+        $('mic-text').textContent = 'Hablar';
+    }
 
-                const aiBubble = document.createElement('div');
-                aiBubble.className = "flex gap-3 md:gap-4";
-                aiBubble.innerHTML = `
-                    <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 shadow">IA</div>
-                    <div data-ai-message class="bg-blue-50 border-2 border-blue-200 text-slate-900 p-4 md:p-5 rounded-3xl rounded-tl-none text-base md:text-xl font-semibold max-w-[85%] shadow-sm">
-                    </div>
-                `;
-                aiBubble.querySelector('[data-ai-message]').textContent = data.respuesta_ia;
-                chatBox.appendChild(aiBubble);
-                chatBox.scrollTop = chatBox.scrollHeight;
+    function hablarTexto(texto) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(texto);
+        const voces = window.speechSynthesis.getVoices();
+        const voz = voces.find(v => v.lang.includes('es') && /Natural|Google|Helena|Sabina|Pablo/.test(v.name)) || voces.find(v => v.lang.includes('es'));
+        if (voz) u.voice = voz;
+        u.lang = 'es-CL'; u.rate = 0.92; u.pitch = 1.0;
+        window.speechSynthesis.speak(u);
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    function hablarMensajeIA() {
+        const ultimo = [...document.querySelectorAll('[data-ai-message]')].at(-1);
+        if (ultimo) hablarTexto(ultimo.innerText);
+    }
 
-                hablarTexto(data.respuesta_ia);
-                estado.textContent = '';
-                document.getElementById('quick-buttons').classList.add('hidden');
+    // =====================================================================
+    //  PANTALLA 5 · ESPERA Y VIDEOLLAMADA (WebRTC) + CHAT ESCRITO CON EL MÉDICO
+    // =====================================================================
+    function entrarEnEspera() {
+        medicoConectado = false;
+        irAPantalla('llamada');
+        $('espera-overlay').classList.remove('hidden');
+        $('espera-error').classList.add('hidden');
+        mostrarFlex('doctor-sin-video', false);
+        $('llamada-etiqueta').classList.add('hidden'); $('llamada-etiqueta').classList.remove('flex');
+        $('btn-finalizar-llamada').disabled = false;
+        reiniciarChatLlamada();
+        hablarTexto('Estamos avisando al médico. Por favor espere frente a la pantalla.');
+        EsperaMedico.iniciar();                // ← arranca la cuenta regresiva de 5 minutos
+        iniciarVideollamadaReal();
+    }
 
-                conversationHistory.push({ role: 'assistant', content: data.respuesta_ia });
+    /** El médico ya se unió: se detiene la espera y se muestra la llamada. */
+    function medicoSeUnio() {
+        if (medicoConectado) return;
+        medicoConectado = true;
+        EsperaMedico.detener();
+        $('espera-overlay').classList.add('hidden');
+        $('llamada-etiqueta').classList.remove('hidden'); $('llamada-etiqueta').classList.add('flex');
+        // Si en 4 s no llega imagen del médico (no tiene cámara), se muestra el aviso "solo audio".
+        clearTimeout(temporizadorSinVideo);
+        temporizadorSinVideo = setTimeout(() => { if (!videoRemotoActivo) mostrarFlex('doctor-sin-video', true); }, 4000);
+        habilitarChatLlamada(true);
+        agregarChatLlamada('sistema', 'El médico se conectó. Puede escribirle aquí.');
+        hablarTexto('El médico ya está con usted. Por favor mire a la pantalla.');
+    }
 
-                if (data.siguiente_accion === 'MOSTRAR_RESUMEN') {
-                    bloquearEntradasTriage();
-                    mostrarResumenAtencion();
-                } else if (data.siguiente_accion === 'DERIVAR_TELEMEDICINA') {
-                    bloquearEntradasTriage();
-                    setTimeout(() => {
-                        document.getElementById('step-triage').classList.add('hidden');
-                        document.getElementById('step-telemedicina').classList.remove('hidden');
-                        document.getElementById('step-telemedicina').scrollIntoView({ block: 'start' });
-                        hablarTexto("Le estamos conectando en vivo con el doctor de telemedicina. Por favor mire a la pantalla.");
-                        iniciarVideollamadaReal();
-                    }, 2500);
-                }
+    /** Muestra u oculta (alternando 'hidden' y 'flex') un panel que se organiza con flex. */
+    function mostrarFlex(id, si) { const e = $(id); e.classList.toggle('hidden', !si); e.classList.toggle('flex', si); }
 
-            } catch (err) {
-                chatStep--;
-                conversationHistory.pop();
-                userBubble.remove();
-                input.value = text;
-                estado.textContent = err instanceof TypeError ? 'No se pudo enviar. Pulse Enviar para reintentar.' : err.message;
-            } finally {
-                enviandoRespuesta = false;
-                input.readOnly = false;
-                if (!isDerivando) document.getElementById('btn-send').disabled = false;
+    /** Obtiene cámara y micrófono con alternativas: video+audio → solo video → solo audio → nada. */
+    async function obtenerMediosTotem(llamada) {
+        if (!navigator.mediaDevices?.getUserMedia) return null;
+        for (const restricciones of [{ video: true, audio: true }, { video: true, audio: false }, { video: false, audio: true }]) {
+            try {
+                return await navigator.mediaDevices.getUserMedia(restricciones);
+            } catch (e) {
+                if (llamada.signal.aborted) return null;
+                console.warn('Medios no disponibles con', restricciones, e);
             }
         }
+        return null;
+    }
 
-        function hablarTexto(texto) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(texto);
-                
-                let voices = window.speechSynthesis.getVoices();
-                let naturalVoice = voices.find(v => v.lang.includes('es') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Helena') || v.name.includes('Sabina') || v.name.includes('Pablo')));
-                
-                if (!naturalVoice) {
-                    naturalVoice = voices.find(v => v.lang.includes('es'));
+    async function iniciarVideollamadaReal() {
+        const llamada = new AbortController();
+        llamadaTotem = llamada;
+        try {
+            // La llamada se establece AUNQUE no haya cámara/micrófono (el tótem igual puede recibir al médico).
+            const stream = await obtenerMediosTotem(llamada);
+            if (llamada.signal.aborted) { stream?.getTracks().forEach(t => t.stop()); return; }
+            localStream = stream;
+            const tieneVideo = !!stream?.getVideoTracks().length, tieneAudio = !!stream?.getAudioTracks().length;
+            if (stream) $('totem-local-video').srcObject = stream;
+            mostrarFlex('totem-sin-camara', !tieneVideo);
+
+            const protocolo = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            telemedicinaWS = new WebSocket(`${protocolo}//${location.host}/ws/telemedicina/totem`);
+            peerConnection = new RTCPeerConnection(rtcConfig);
+            const conexion = peerConnection, socket = telemedicinaWS;
+            let candidatosPendientes = [];     // ICE que llegan antes de la descripción remota
+
+            stream?.getTracks().forEach(t => conexion.addTrack(t, stream));
+            // Si falta cámara o micrófono, se pide igualmente RECIBIR el video/audio del médico.
+            if (!tieneVideo) conexion.addTransceiver('video', { direction: 'recvonly' });
+            if (!tieneAudio) conexion.addTransceiver('audio', { direction: 'recvonly' });
+
+            const remoto = $('doctor-remote-video');
+            const medioRemoto = new MediaStream();
+            remoto.srcObject = medioRemoto;
+            conexion.ontrack = ev => {
+                medioRemoto.addTrack(ev.track);
+                remoto.play().catch(() => {});
+                if (ev.track.kind === 'video') {
+                    // Sin imagen del médico (no tiene cámara) → se muestra un aviso, la llamada sigue por audio.
+                    const actualizar = () => {
+                        videoRemotoActivo = !ev.track.muted && ev.track.readyState === 'live';
+                        if (videoRemotoActivo) mostrarFlex('doctor-sin-video', false);
+                        else if (medicoConectado) mostrarFlex('doctor-sin-video', true);
+                    };
+                    ev.track.onmute = actualizar; ev.track.onunmute = actualizar; ev.track.onended = actualizar;
+                    actualizar();
                 }
-                
-                if (naturalVoice) {
-                    utterance.voice = naturalVoice;
-                }
-
-                utterance.lang = 'es-CL';
-                utterance.rate = 0.92;
-                utterance.pitch = 1.0;
-                
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = function() {
-                window.speechSynthesis.getVoices();
             };
-        }
-
-        function hablarMensajeIA() {
-            const msgElement = [...document.querySelectorAll('[data-ai-message]')].at(-1);
-            if (msgElement) {
-                hablarTexto(msgElement.innerText);
-            }
-        }
-
-        async function iniciarVideollamadaReal() {
-            const llamada = new AbortController();
-            llamadaTotem = llamada;
-            try {
-                let stream;
+            conexion.onicecandidate = ev => {
+                if (ev.candidate && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'candidate', candidate: ev.candidate }));
+            };
+            socket.onopen = async () => {
                 try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                } catch (errMedia) {
-                    if (llamada.signal.aborted) return;
-                    console.warn("Fallback a solo video...", errMedia);
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                }
-
-                if (llamada.signal.aborted) {
-                    stream.getTracks().forEach(track => track.stop());
-                    return;
-                }
-                localStream = stream;
-                document.getElementById('totem-local-video').srcObject = localStream;
-
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                telemedicinaWS = new WebSocket(`${protocol}//${window.location.host}/ws/telemedicina/totem`);
-                peerConnection = new RTCPeerConnection(rtcConfig);
-
-                const conexion = peerConnection;
-                const socket = telemedicinaWS;
-                // Candidates ICE que llegan antes de tener la descripción remota
-                let pendingCandidates = [];
-
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                peerConnection.ontrack = event => {
-                    const remoteVideo = document.getElementById('doctor-remote-video');
-                    if (remoteVideo && event.streams && event.streams[0]) {
-                        remoteVideo.srcObject = event.streams[0];
-                        remoteVideo.play().catch(() => {});
+                    const offer = await conexion.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+                    await conexion.setLocalDescription(offer);
+                    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'offer', offer }));
+                } catch (err) { if (!llamada.signal.aborted) console.error('Error iniciando señalización WebRTC:', err); }
+            };
+            socket.onmessage = async ev => {
+                try {
+                    const msg = JSON.parse(ev.data);
+                    if (msg.tipo === 'chat') { recibirChatDoctor(msg.texto); return; }
+                    if (msg.tipo === 'resumen_listo') { finalizarLlamadaTotem(false); return; }   // el médico guardó diagnóstico y receta
+                    if (msg.type === 'doctor_connected') {
+                        medicoSeUnio();
+                    } else if (msg.type === 'answer') {
+                        medicoSeUnio();
+                        await conexion.setRemoteDescription(new RTCSessionDescription(msg.answer));
+                        for (const c of candidatosPendientes) await conexion.addIceCandidate(c);
+                        candidatosPendientes = [];
+                    } else if (msg.type === 'candidate') {
+                        const cand = new RTCIceCandidate(msg.candidate);
+                        if (conexion.remoteDescription) await conexion.addIceCandidate(cand); else candidatosPendientes.push(cand);
+                    } else if (msg.type === 'end') {
+                        finalizarLlamadaTotem(false);
                     }
-                };
+                } catch (err) { if (!llamada.signal.aborted) console.error('Error procesando señalización WebRTC:', err); }
+            };
+        } catch (e) {
+            if (llamada.signal.aborted) return;
+            console.error('Error iniciando la videollamada:', e);
+            const err = $('espera-error');
+            err.textContent = 'No pudimos iniciar la videollamada. Pida ayuda en el mesón de informaciones.';
+            err.classList.remove('hidden');
+        }
+    }
 
-                peerConnection.onicecandidate = event => {
-                    if (event.candidate && telemedicinaWS && telemedicinaWS.readyState === WebSocket.OPEN) {
-                        telemedicinaWS.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-                    }
-                };
-
-                socket.onopen = async () => {
-                    try {
-                        const offer = await conexion.createOffer();
-                        await conexion.setLocalDescription(offer);
-                        if (socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: 'offer', offer }));
-                        }
-                    } catch (err) {
-                        if (!llamada.signal.aborted) console.error("Error iniciando señalización WebRTC:", err);
-                    }
-                };
-
-                socket.onmessage = async (event) => {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        if (msg.type === 'answer') {
-                            await conexion.setRemoteDescription(new RTCSessionDescription(msg.answer));
-                            for (const c of pendingCandidates) {
-                                await conexion.addIceCandidate(c);
-                            }
-                            pendingCandidates = [];
-                        } else if (msg.type === 'candidate') {
-                            const cand = new RTCIceCandidate(msg.candidate);
-                            if (conexion.remoteDescription) {
-                                await conexion.addIceCandidate(cand);
-                            } else {
-                                pendingCandidates.push(cand);
-                            }
-                        } else if (msg.type === 'end') {
-                            finalizarLlamadaTotem(false);
-                        }
-                    } catch (err) {
-                        if (!llamada.signal.aborted) console.error("Error procesando señalización WebRTC:", err);
-                    }
-                };
-            } catch(e) {
-                if (llamada.signal.aborted) return;
-                console.error("Error iniciando cámara WebRTC:", e);
-                alert("Por favor permita el acceso a la cámara y al micrófono en los permisos de la aplicación o navegador.");
+    // --- Chat escrito durante la llamada (JSON {"tipo":"chat","emisor":"doctor|paciente","texto":"..."}) ---
+    function reiniciarChatLlamada() {
+        $('llamada-chat-log').innerHTML = ''; indicacionesDoctor = [];
+        $('llamada-msg').value = '';
+        habilitarChatLlamada(false);
+        agregarChatLlamada('sistema', 'Aquí verá los mensajes del médico.');
+    }
+    function habilitarChatLlamada(si) {
+        $('llamada-msg').disabled = !si; $('btn-llamada-enviar').disabled = !si;
+        document.querySelectorAll('#llamada-quick button').forEach(b => b.disabled = !si);
+    }
+    function agregarChatLlamada(emisor, texto) {
+        const log = $('llamada-chat-log');
+        const fila = document.createElement('div');
+        if (emisor === 'sistema') {
+            fila.className = 'text-center text-base font-bold text-slate-500'; fila.textContent = texto;
+        } else {
+            fila.className = 'chat-llamada-burbuja ' + (emisor === 'doctor' ? 'chat-llamada-doctor' : 'chat-llamada-paciente');
+            const t = document.createElement('p'); t.textContent = texto; fila.appendChild(t);
+            if (emisor === 'doctor') {
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'mt-1 text-base font-extrabold text-blue-900 underline'; b.innerHTML = '<i class="fa-solid fa-volume-high"></i> Escuchar';
+                b.onclick = () => hablarTexto(texto); fila.appendChild(b);
             }
         }
-
-        function finalizarLlamadaTotem(notificarMedico) {
-            llamadaTotem?.abort();
-            llamadaTotem = null;
-            if (telemedicinaWS) {
-                telemedicinaWS.onmessage = null;
-                if (notificarMedico && telemedicinaWS.readyState === WebSocket.OPEN) {
-                    telemedicinaWS.send(JSON.stringify({ type: 'end' }));
-                }
-                telemedicinaWS.close();
-                telemedicinaWS = null;
-            }
-            peerConnection?.close();
-            peerConnection = null;
-            localStream?.getTracks().forEach(track => track.stop());
-            localStream = null;
-            document.getElementById('totem-local-video').srcObject = null;
-            document.getElementById('doctor-remote-video').srcObject = null;
-            window.speechSynthesis?.cancel();
-            mostrarResumenAtencion();
+        log.appendChild(fila);
+        log.scrollTop = log.scrollHeight;
+    }
+    function recibirChatDoctor(texto) {
+        if (typeof texto !== 'string' || !texto.trim()) return;
+        agregarChatLlamada('doctor', texto);
+        indicacionesDoctor.push(texto);                  // luego se muestran también en el resumen final
+        navigator.vibrate?.(200);
+        Inactividad.reiniciar();
+    }
+    function enviarChatLlamada(textoRapido) {
+        const input = $('llamada-msg');
+        const texto = (typeof textoRapido === 'string' ? textoRapido : input.value).trim().slice(0, 500);
+        if (!texto) return;
+        if (!telemedicinaWS || telemedicinaWS.readyState !== WebSocket.OPEN || !medicoConectado) {
+            agregarChatLlamada('sistema', 'Aún no hay conexión con el médico. Intente nuevamente en unos segundos.');
+            return;
         }
+        telemedicinaWS.send(JSON.stringify({ tipo: 'chat', emisor: 'paciente', texto }));
+        agregarChatLlamada('paciente', texto);
+        input.value = '';
+        input.focus({ preventScroll: true });
+    }
 
-        function mostrarResumenAtencion() {
-            document.getElementById('step-triage').classList.add('hidden');
-            document.getElementById('step-telemedicina').classList.add('hidden');
-            document.getElementById('rut-status').classList.add('hidden');
-            document.body.classList.add('mostrando-resumen');
-            document.getElementById('step-resumen').classList.remove('hidden');
-            document.getElementById('resumen-titulo').focus();
-            document.getElementById('step-resumen').scrollIntoView({ block: 'start' });
-            consultarResumenAtencion();
+    /** Cierra cámara, micrófono, WebSocket y WebRTC (sin cambiar de pantalla). */
+    function cerrarMediosLlamada(notificarMedico) {
+        llamadaTotem?.abort(); llamadaTotem = null;
+        clearTimeout(temporizadorSinVideo); videoRemotoActivo = false;
+        if (telemedicinaWS) {
+            telemedicinaWS.onmessage = null;
+            if (notificarMedico && telemedicinaWS.readyState === WebSocket.OPEN) telemedicinaWS.send(JSON.stringify({ type: 'end' }));
+            telemedicinaWS.close(); telemedicinaWS = null;
         }
+        peerConnection?.close(); peerConnection = null;
+        localStream?.getTracks().forEach(t => t.stop()); localStream = null;
+        $('totem-local-video').srcObject = null; $('doctor-remote-video').srcObject = null;
+    }
 
-        async function consultarResumenAtencion() {
-            const estado = document.getElementById('resumen-estado');
-            if (!accesoResumen) {
-                estado.textContent = 'El resumen de esta atención no está disponible en el tótem.';
+    /** Botón "Finalizar llamada" del paciente (o fin enviado por el médico / aviso de resumen listo). */
+    function finalizarLlamadaTotem(notificarMedico) {
+        if (pantallaActual === 'resumen') return;        // ya se está mostrando el resumen
+        EsperaMedico.detener();
+        cerrarMediosLlamada(notificarMedico);
+        window.speechSynthesis?.cancel();
+        mostrarResumenAtencion();
+    }
+
+    // =====================================================================
+    //  RESUMEN DE LA ATENCIÓN (tarjeta con Diagnóstico, Receta e Indicaciones)
+    // =====================================================================
+    let temporizadorResumen = null;
+
+    function mostrarResumenAtencion() {
+        $('rut-status').classList.add('hidden');
+        document.body.classList.add('mostrando-resumen');
+        irAPantalla('resumen');
+        $('resumen-titulo').focus();
+        consultarResumenAtencion();
+    }
+
+    async function consultarResumenAtencion() {
+        clearTimeout(temporizadorResumen);
+        if (pantallaActual !== 'resumen') return;               // el paciente ya salió
+        const estado = $('resumen-estado');
+        if (!accesoResumen) { estado.textContent = 'El resumen de esta atención no está disponible en el tótem.'; return; }
+        const esperando = 'La llamada terminó. Estamos esperando que el profesional guarde su atención.';
+        if (!estado.textContent) estado.textContent = esperando;
+        try {
+            const res = await fetch('/api/v1/resumen-atencion', {
+                headers: { Authorization: 'Bearer ' + accesoResumen }, cache: 'no-store', signal: AbortSignal.timeout(8000),
+            });
+            if (res.status === 202) {
+                estado.textContent = esperando;
+            } else if (res.ok) {
+                const d = await res.json();
+                const fecha = new Date(d.fecha);
+                $('resumen-id').textContent = d.id;
+                $('resumen-fecha').textContent = Number.isNaN(fecha.getTime()) ? d.fecha : fecha.toLocaleString('es-CL');
+                $('resumen-diagnostico').textContent = d.diagnostico || 'Sin diagnóstico registrado.';
+                $('resumen-receta').textContent = d.receta || 'El profesional no registró una receta ni indicaciones.';
+                const lista = $('resumen-chat'); lista.innerHTML = '';
+                indicacionesDoctor.forEach(t => { const li = document.createElement('li'); li.textContent = t; lista.appendChild(li); });
+                $('resumen-chat-bloque').classList.toggle('hidden', !indicacionesDoctor.length);
+                $('resumen-datos').classList.remove('hidden'); $('resumen-imprimir').classList.remove('hidden'); $('resumen-escuchar').classList.remove('hidden');
+                estado.textContent = 'Su atención terminó. Este es su resumen:';
+                Inactividad.iniciar();                          // por privacidad: si el paciente se va, la pantalla se limpia sola
+                if (!consultarResumenAtencion.anunciado) { consultarResumenAtencion.anunciado = true; leerResumenEnVoz(); }
                 return;
-            }
+            } else if (res.status === 401 || res.status === 404) {
+                estado.textContent = 'No se encontró el resumen. Solicite ayuda al personal.';
+                return;
+            } else { throw new Error(); }
+        } catch (e) { estado.textContent = 'No pudimos consultar el resumen. Reintentando…'; }
+        temporizadorResumen = setTimeout(consultarResumenAtencion, 3000);
+    }
 
-            estado.textContent ||= 'La llamada terminó. Estamos esperando que el profesional guarde su atención.';
-            try {
-                const res = await fetch('/api/v1/resumen-atencion', {
-                    headers: { Authorization: 'Bearer ' + accesoResumen },
-                    cache: 'no-store',
-                    signal: AbortSignal.timeout(8000),
-                });
-                if (res.status === 202) {
-                    estado.textContent = 'La llamada terminó. Estamos esperando que el profesional guarde su atención.';
-                } else if (res.ok) {
-                    const datos = await res.json();
-                    const fecha = new Date(datos.fecha);
-                    document.getElementById('resumen-id').textContent = datos.id;
-                    document.getElementById('resumen-fecha').textContent = Number.isNaN(fecha.getTime())
-                        ? datos.fecha : fecha.toLocaleString('es-CL');
-                    document.getElementById('resumen-diagnostico').textContent = datos.diagnostico || 'Sin diagnóstico registrado.';
-                    document.getElementById('resumen-receta').textContent = datos.receta || 'El profesional no registró una receta ni indicaciones.';
-                    document.getElementById('resumen-datos').classList.remove('hidden');
-                    document.getElementById('resumen-imprimir').classList.remove('hidden');
-                    estado.textContent = 'Su resumen está disponible.';
-                    return;
-                } else if (res.status === 401 || res.status === 404) {
-                    estado.textContent = 'No se encontró el resumen. Solicite ayuda al personal.';
-                    return;
-                } else {
-                    throw new Error();
-                }
-            } catch (error) {
-                estado.textContent = 'No pudimos consultar el resumen. Reintentando…';
-            }
-            setTimeout(consultarResumenAtencion, 3000);
-        }
-    </script>
+    function leerResumenEnVoz() {
+        hablarTexto(`Diagnóstico: ${$('resumen-diagnostico').textContent}. Receta e indicaciones: ${$('resumen-receta').textContent}`);
+    }
+
+    // =====================================================================
+    //  ARRANQUE
+    // =====================================================================
+    agregarMensajeIA(CONFIG.SALUDO_IA, true);
+    irAPantalla('rut');
+    
+    // ---- App instalable + pantalla completa ----
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW no registrado:', e)));
+    }
+    /** Pantalla completa a demanda (si no se instaló como app): se activa con un toque en el botón. */
+    function pantallaCompleta() {
+        const el = document.documentElement;
+        if (document.fullscreenElement) { document.exitFullscreen(); return; }
+        (el.requestFullscreen?.() ?? Promise.reject()).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+    }
+    const _btnFs = $('btn-pantalla-completa');
+    document.addEventListener('fullscreenchange', () => _btnFs.classList.toggle('hidden', !!document.fullscreenElement));
+    if (window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) _btnFs.classList.add('hidden');
+</script>
 </body>
 </html>

@@ -10,7 +10,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
         .login-hero-bg {
-            background-image: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4)), url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1600&auto=format&fit=crop');
+            background-image: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.4)), url('/static/img/image_4135df.jpg');
             background-size: cover; background-position: center;
         }
         .btn-interactive { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -20,6 +20,12 @@
         .call-layout[data-ended] { grid-template-columns: minmax(0, 1fr); }
         .call-layout[data-ended] .call-video { display: none; }
         .call-layout[data-ended] .call-details { grid-column: auto; width: min(100%, 48rem); margin-inline: auto; }
+        .celda-corta { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        tr.fila-historial { cursor: pointer; }
+        tr.fila-historial:focus-visible { outline-offset: -2px; }
+        .chat-doc-burbuja { padding: .5rem .75rem; border-radius: 1rem; font-size: .875rem; font-weight: 600; max-width: 85%; overflow-wrap: anywhere; white-space: pre-wrap; }
+        .chat-doc-paciente { background: #e2e8f0; color: #0f172a; border-top-left-radius: 0; }
+        .chat-doc-doctor { background: #047857; color: #fff; margin-left: auto; border-top-right-radius: 0; }
         @media (max-width: 639px) {
             table.patient-table { display: block; min-width: 0; }
             .patient-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -64,19 +70,28 @@
                     <p class="text-xs text-slate-500">Ingrese sus credenciales de médico registrado.</p>
                 </div>
 
-                <form onsubmit="realizarLogin(event)" class="space-y-4">
+                <form onsubmit="realizarLogin(event)" class="space-y-4" novalidate>
+                    <p id="login-error" class="hidden rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800" role="alert"></p>
+                    <!-- Solo aparece si el servidor tiene MODO_DEMO=1 -->
+                    <button type="button" id="btn-demo" onclick="entrarDemo()" class="hidden w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md btn-interactive text-sm uppercase tracking-wider">
+                        <i class="fa-solid fa-bolt mr-1.5"></i> Entrar como médico de demostración
+                    </button>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Correo Profesional</label>
-                        <input type="email" id="login-email" value="marcos.gonzalez@salud.cl" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-emerald-600 text-slate-900 transition">
+                        <label for="login-email" class="block text-xs font-bold text-slate-700 mb-1">Correo Profesional</label>
+                        <input type="email" id="login-email" autocomplete="username" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-base font-semibold focus:outline-none focus:border-emerald-600 text-slate-900 transition">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
-                        <input type="password" id="login-pass" value="123" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-emerald-600 text-slate-900 transition">
+                        <label for="login-pass" class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+                        <div class="relative">
+                            <input type="password" id="login-pass" autocomplete="current-password" required class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-4 pr-12 py-3 text-base font-semibold focus:outline-none focus:border-emerald-600 text-slate-900 transition">
+                            <button type="button" onclick="alternarClave()" id="btn-ver-clave" aria-label="Mostrar contraseña" class="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 text-slate-500 hover:text-slate-900"><i class="fa-solid fa-eye"></i></button>
+                        </div>
                     </div>
-                    <button type="submit" class="w-full py-3.5 bg-slate-900 hover:bg-emerald-600 text-white font-extrabold rounded-xl shadow-md btn-interactive text-xs uppercase tracking-wider">
+                    <button type="submit" id="btn-login" class="w-full py-4 bg-slate-900 hover:bg-emerald-600 text-white font-extrabold rounded-xl shadow-md btn-interactive text-sm uppercase tracking-wider disabled:opacity-60">
                         <i class="fa-solid fa-right-to-bracket mr-1.5"></i> Ingresar al Portal
                     </button>
                 </form>
+                <p class="text-xs text-slate-500">¿Es un paciente? Use el tótem de atención; este portal es solo para profesionales.</p>
             </div>
         </div>
     </div>
@@ -89,11 +104,12 @@
                     <i class="fa-solid fa-stethoscope"></i>
                 </div>
                 <span class="text-xs font-extrabold tracking-widest uppercase">Portal Clínico de Telemedicina</span>
+                <span id="hdr-medico" class="hidden sm:inline text-xs font-semibold text-slate-300 border-l border-slate-600 pl-3"></span>
             </div>
             <div class="flex flex-wrap items-center gap-3 md:gap-4 text-xs font-bold">
-                <button onclick="switchTab('queue')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive"><i class="fa-solid fa-users"></i> Cola (<span id="top-badge-queue">0</span>)</button>
-                <button onclick="switchTab('history')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive"><i class="fa-solid fa-folder"></i> Historial</button>
-                <button onclick="cerrarSesion()" class="text-rose-400 hover:text-rose-300 transition ml-2 btn-interactive"><i class="fa-solid fa-power-off"></i> Salir</button>
+                <button onclick="switchTab('queue')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive py-2 px-1"><i class="fa-solid fa-users"></i> Cola (<span id="top-badge-queue">0</span>)</button>
+                <button onclick="switchTab('history')" class="hover:text-emerald-400 transition flex items-center gap-1.5 btn-interactive py-2 px-1"><i class="fa-solid fa-folder"></i> Historial</button>
+                <button onclick="cerrarSesion()" class="text-rose-400 hover:text-rose-300 transition ml-2 btn-interactive py-2 px-1"><i class="fa-solid fa-power-off"></i> Cerrar sesión</button>
             </div>
         </header>
 
@@ -107,13 +123,13 @@
                                     <i class="fa-solid fa-hospital-user"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-xs font-black text-slate-900 uppercase">Dr. Marcos González</h3>
+                                    <h3 id="aside-nombre" class="text-xs font-black text-slate-900 uppercase">—</h3>
                                     <p class="text-[11px] font-bold text-emerald-600">Staff Médico Autorizado</p>
                                 </div>
                             </div>
                             <div class="text-xs space-y-2 text-slate-600 font-medium">
-                                <div class="flex justify-between"><span class="font-bold text-slate-500">Especialidad:</span> <span class="text-slate-900 font-bold">Medicina General</span></div>
-                                <div class="flex justify-between"><span class="font-bold text-slate-500">Registro RNPI:</span> <span class="text-slate-900 font-bold">489201</span></div>
+                                <div class="flex justify-between"><span class="font-bold text-slate-500">Especialidad:</span> <span id="aside-especialidad" class="text-slate-900 font-bold">—</span></div>
+                                <div class="flex justify-between"><span class="font-bold text-slate-500">Registro RNPI:</span> <span id="aside-registro" class="text-slate-900 font-bold">—</span></div>
                                 <div class="flex justify-between"><span class="font-bold text-slate-500">Estado:</span> <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-black text-[10px]">ACTIVO EN LÍNEA</span></div>
                             </div>
                         </div>
@@ -126,7 +142,7 @@
                                     <h3 class="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
                                         <i class="fa-solid fa-list-check text-emerald-600"></i> Cola de Pacientes en Espera
                                     </h3>
-                                    <p class="text-[11px] md:text-xs text-slate-500">Asigne la prioridad y seleccione un paciente para atenderlo.</p>
+                                    <p class="text-[11px] md:text-xs text-slate-500">Prioridad asignada por auto-triage (signos vitales + síntomas). Puede corregirla manualmente. <span id="cola-actualizada" class="font-semibold"></span></p>
                                 </div>
                                 <button onclick="actualizarCola()" class="px-3 py-1.5 md:px-3.5 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 btn-interactive flex items-center gap-1.5">
                                     <i class="fa-solid fa-arrows-rotate"></i> Actualizar
@@ -140,7 +156,7 @@
                                             <th class="p-3">RUT Paciente</th>
                                             <th class="p-3">Motivo / Síntomas</th>
                                             <th class="p-3">Resumen de triage</th>
-                                            <th class="p-3">Prioridad de triage</th>
+                                            <th class="p-3">Prioridad (auto-triage)</th>
                                             <th class="p-3 text-center rounded-r-xl">Acción</th>
                                         </tr>
                                     </thead>
@@ -150,11 +166,36 @@
                         </div>
 
                         <div id="tab-history" class="hidden bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm flex flex-col space-y-4">
-                            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                                <h3 class="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
-                                    <i class="fa-solid fa-folder-closed text-emerald-600"></i> Historial General de Atenciones
-                                </h3>
+                            <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <button type="button" onclick="switchTab('queue')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 btn-interactive flex items-center gap-1.5">
+                                        <i class="fa-solid fa-arrow-left"></i> Volver al panel
+                                    </button>
+                                    <h3 class="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
+                                        <i class="fa-solid fa-folder-closed text-emerald-600"></i> Historial General de Atenciones
+                                    </h3>
+                                </div>
+                                <span id="hist-contador" class="text-xs font-bold text-slate-500" role="status"></span>
                             </div>
+                            <!-- Búsqueda por RUT y/o fecha (se filtra en el navegador, sin recargar) -->
+                            <form class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end" onsubmit="event.preventDefault(); filtrarHistorial()">
+                                <div class="lg:col-span-2">
+                                    <label for="hist-rut" class="block text-[11px] font-bold text-slate-600 mb-1">Buscar por RUT</label>
+                                    <input id="hist-rut" type="search" autocomplete="off" placeholder="Ej: 12.345.678-5 o 12345" oninput="filtrarHistorial()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                                </div>
+                                <div>
+                                    <label for="hist-desde" class="block text-[11px] font-bold text-slate-600 mb-1">Fecha desde</label>
+                                    <input id="hist-desde" type="date" onchange="filtrarHistorial()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                                </div>
+                                <div>
+                                    <label for="hist-hasta" class="block text-[11px] font-bold text-slate-600 mb-1">Fecha hasta</label>
+                                    <div class="flex gap-2">
+                                        <input id="hist-hasta" type="date" onchange="filtrarHistorial()" class="min-w-0 flex-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                                        <button type="button" onclick="limpiarFiltrosHistorial()" class="px-3 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold btn-interactive" title="Quitar filtros"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+                            </form>
+                            <p class="text-[11px] text-slate-500"><i class="fa-solid fa-hand-pointer mr-1"></i>Haga clic en una fila para ver el detalle completo de la atención.</p>
                             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Historial de atenciones">
                                 <table class="patient-table w-full text-left text-xs text-slate-700 min-w-[500px]">
                                     <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
@@ -180,13 +221,34 @@
         </footer>
     </div>
 
+    <!-- DETALLE DE UNA ATENCIÓN DEL HISTORIAL -->
+    <div id="modal-historial" class="hidden fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-hist-titulo" onclick="if(event.target===this) cerrarDetalleHistorial()">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto p-5 md:p-7 space-y-4">
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                    <p class="text-[11px] font-bold text-emerald-700 uppercase">Detalle de la atención</p>
+                    <h3 id="modal-hist-titulo" class="text-lg font-black text-slate-900">Atención <span id="mh-id" class="font-mono"></span></h3>
+                </div>
+                <button type="button" onclick="cerrarDetalleHistorial()" class="w-9 h-9 shrink-0 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 btn-interactive" aria-label="Cerrar detalle"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><dt class="text-[11px] font-bold text-slate-500 uppercase">RUT</dt><dd id="mh-rut" class="font-mono font-bold"></dd></div>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><dt class="text-[11px] font-bold text-slate-500 uppercase">Fecha y hora</dt><dd id="mh-fecha" class="font-bold"></dd></div>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100"><dt class="text-[11px] font-bold text-slate-500 uppercase">Estado</dt><dd id="mh-estado" class="font-bold"></dd></div>
+            </dl>
+            <section><h4 class="text-xs font-black text-slate-700 uppercase mb-1">Diagnóstico</h4><p id="mh-diagnostico" class="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm bg-slate-50 border border-slate-200 rounded-xl p-3"></p></section>
+            <section><h4 class="text-xs font-black text-slate-700 uppercase mb-1">Receta e indicaciones</h4><p id="mh-receta" class="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm bg-emerald-50 border border-emerald-200 rounded-xl p-3"></p></section>
+            <button type="button" id="mh-volver" onclick="cerrarDetalleHistorial()" class="w-full md:w-auto px-5 py-3 bg-slate-900 hover:bg-slate-700 text-white font-bold text-xs rounded-xl btn-interactive"><i class="fa-solid fa-arrow-left mr-1.5"></i> Volver al historial</button>
+        </div>
+    </div>
+
     <!-- PRE-CONSULTA -->
     <div id="screen-patient-data" class="hidden min-h-screen flex flex-col justify-between bg-slate-100 p-4 md:p-6 overflow-y-auto">
         <div class="max-w-4xl mx-auto w-full space-y-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div class="flex items-center gap-3">
-                    <button onclick="volverAlPortal()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center text-slate-700 btn-interactive shrink-0">
-                        <i class="fa-solid fa-arrow-left"></i>
+                    <button type="button" onclick="volverAlPortal()" class="px-3 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 btn-interactive shrink-0" aria-label="Volver al panel">
+                        <i class="fa-solid fa-arrow-left"></i> Volver
                     </button>
                     <div>
                         <h2 class="text-base md:text-lg font-black text-slate-900">Evaluación Pre-Consulta y Signos Vitales</h2>
@@ -225,7 +287,7 @@
 
                 <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm space-y-4">
                     <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3 text-sky-700 font-black text-sm uppercase">
-                        <i class="fa-solid fa-stethoscope"></i> Mediciones de Instrumentos (Tótem)
+                        <i class="fa-solid fa-stethoscope"></i> Signos vitales (escaneo del tótem)
                     </div>
                     <div class="grid grid-cols-2 gap-3 text-xs">
                         <div class="bg-sky-50/50 border border-sky-100 p-3.5 rounded-xl space-y-1">
@@ -245,6 +307,7 @@
                             <span id="inst-sat" class="text-base font-black text-slate-900">--</span>
                         </div>
                     </div>
+                    <p id="inst-simulado" class="hidden text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Estimación simulada (modo demostración): no usar como medición clínica.</p>
                     <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-1">
                         <span class="font-bold text-amber-900 block text-xs uppercase"><i class="fa-solid fa-robot mr-1"></i> Resumen de triage</span>
                         <span id="inst-diag" class="font-bold text-slate-900 text-xs">--</span>
@@ -262,6 +325,7 @@
                 <span id="call-status" class="text-xs font-black tracking-wider uppercase" role="status">Sesión activa</span>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                <button type="button" id="back-from-call" onclick="volverDesdeLlamada()" class="rounded-xl border border-slate-500 px-3 py-2 text-xs font-bold hover:bg-slate-800"><i class="fa-solid fa-arrow-left mr-1"></i><span id="back-from-call-texto">Volver al panel</span></button>
                 <button type="button" id="hang-up-doctor" onclick="colgarLlamadaDoctor()" class="rounded-xl border border-slate-500 px-3 py-2 text-xs font-bold hover:bg-slate-800">
                     Colgar
                 </button>
@@ -272,16 +336,41 @@
         </header>
 
         <div id="call-layout" class="call-layout flex-1 my-4 md:my-6 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
-            <div class="call-video lg:col-span-8 min-w-0 relative bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl aspect-video max-h-[65dvh] flex items-center justify-center">
+            <div class="call-video lg:col-span-8 min-w-0 space-y-4">
+              <div class="relative bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl aspect-video max-h-[65dvh] flex items-center justify-center">
                 <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain"></video>
+                <div id="remote-sin-video" class="hidden absolute inset-0 bg-slate-900 text-white flex-col items-center justify-center text-center gap-2 p-4">
+                    <i class="fa-solid fa-user text-5xl text-slate-400"></i>
+                    <p class="text-sm font-bold">Esperando la imagen del paciente…</p>
+                    <p class="text-xs text-slate-300">Si el paciente no tiene cámara, igual podrá escucharlo y chatear.</p>
+                </div>
                 <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-bold text-white border border-slate-700 flex items-center gap-2">
                     <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span>Cámara Paciente</span>
                 </div>
                 <div class="absolute bottom-4 left-4 w-32 h-24 md:w-44 md:h-32 bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-lg">
                     <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    <!-- Avatar cuando el médico NO tiene cámara o no dio permisos: la llamada sigue funcionando -->
+                    <div id="local-sin-camara" class="hidden absolute inset-0 bg-slate-800 text-white text-center flex-col items-center justify-center p-1.5 gap-1">
+                        <i class="fa-solid fa-user-doctor text-2xl text-emerald-400"></i>
+                        <span class="text-[10px] md:text-[11px] font-bold leading-tight">Médico sin cámara (solo audio/vista)</span>
+                    </div>
                     <div class="absolute top-1 left-2 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">Tu Cámara</div>
                 </div>
+              </div>
+              <p id="medios-estado" class="text-xs font-semibold text-slate-600" role="status"></p>
+
+              <!-- Chat escrito con el paciente -->
+              <div class="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-3">
+                <h4 class="font-black text-slate-900 text-sm uppercase"><i class="fa-solid fa-comments text-emerald-600 mr-1.5"></i> Chat con el paciente</h4>
+                <div id="doctor-chat-log" role="log" aria-live="polite" tabindex="0" class="h-40 overflow-y-auto space-y-2 bg-slate-50 border border-slate-200 rounded-2xl p-3"></div>
+                <div class="flex gap-2">
+                    <input id="doctor-chat-msg" type="text" maxlength="500" disabled placeholder="Escriba una indicación para el paciente…" aria-label="Mensaje para el paciente"
+                           onkeydown="if(event.key==='Enter') enviarChatDoctor()" class="min-w-0 flex-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm disabled:bg-slate-200">
+                    <button type="button" id="doctor-chat-enviar" disabled onclick="enviarChatDoctor()" class="px-4 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl btn-interactive"><i class="fa-solid fa-paper-plane mr-1"></i> Enviar</button>
+                </div>
+                <button type="button" id="doctor-chat-receta" disabled onclick="enviarRecetaAlChat()" class="text-xs font-bold text-emerald-800 underline disabled:opacity-50">Enviar al paciente lo escrito en «Receta e indicaciones»</button>
+              </div>
             </div>
 
             <div class="call-details lg:col-span-4 min-w-0 bg-white border border-slate-200 rounded-3xl p-4 md:p-6 shadow-sm space-y-4 break-words">
@@ -341,12 +430,21 @@
         let peerConnection = null;
         let doctorWS = null;
         let llamadaDoctor = null;
+        let historialCompleto = [];          // todas las atenciones (la búsqueda se hace sobre esta lista)
+        let ultimoFocoHistorial = null;      // para devolver el foco al cerrar el detalle
+        let temporizadorVolver = null;
+        /** Muestra/oculta un elemento que usa flex (alterna 'hidden' y 'flex' a la vez). */
+        const mostrarFlex = (id, si) => { const e = document.getElementById(id); e.classList.toggle('hidden', !si); e.classList.toggle('flex', si); };
+        // Escala de auto-triage: [valor, etiqueta, clases de color]
         const nivelesTriage = [
-            [1, 'Alta'],
-            [2, 'Preferente'],
-            [3, 'Habitual'],
-            [4, 'Sin clasificar'],
+            [1, '1 · Emergencia', 'bg-rose-100 text-rose-900 border-rose-500'],
+            [2, '2 · Urgente',    'bg-orange-100 text-orange-900 border-orange-500'],
+            [3, '3 · Moderada',   'bg-amber-100 text-amber-900 border-amber-500'],
+            [4, '4 · Leve',       'bg-emerald-100 text-emerald-900 border-emerald-500'],
         ];
+        let medicoActual = null;
+        let temporizadorCola = null;
+        const INTERVALO_COLA_MS = 5000;   // la cola se refresca sola cada 5 s (signos vitales "en tiempo real")
 
         const rtcConfig = {
             iceServers: [
@@ -369,31 +467,130 @@
             ]
         };
 
-        const sessionKey = 'totem-medico:portal-session';
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem(sessionKey) === 'active') abrirPortal();
-        });
-
-        function realizarLogin(e) {
-            e.preventDefault();
-            localStorage.setItem(sessionKey, 'active');
-            abrirPortal();
+        // =====================================================================
+        //  SESIÓN DEL MÉDICO (login contra /api/v1/auth/*; la sesión vive en una cookie HttpOnly)
+        // =====================================================================
+        /** fetch con cookies; si el servidor responde 401 (sesión vencida) vuelve al login. */
+        async function api(url, opciones = {}) {
+            const res = await fetch(url, { credentials: 'same-origin', ...opciones });
+            if (res.status === 401 && !url.includes('/auth/')) sesionExpirada();
+            return res;
         }
 
-        function abrirPortal() {
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/v1/auth/sesion', { credentials: 'same-origin' });
+                if (res.ok) { abrirPortal(await res.json()); return; }
+            } catch (e) { /* sin conexión: se queda en el login */ }
+            // ¿Servidor en modo demostración? Muestra el botón de acceso rápido.
+            try {
+                const cfg = await (await fetch('/api/v1/auth/config')).json();
+                document.getElementById('btn-demo').classList.toggle('hidden', !cfg.modo_demo);
+            } catch (e) { /* sin botón de demo */ }
+            document.getElementById('login-email').focus();
+        });
+
+        /** Acceso de demostración con un solo clic (el servidor debe tener MODO_DEMO=1). */
+        async function entrarDemo() {
+            const error = document.getElementById('login-error');
+            error.classList.add('hidden');
+            try {
+                const res = await fetch('/api/v1/auth/login-demo', { method: 'POST', credentials: 'same-origin' });
+                if (!res.ok) throw new Error('El acceso de demostración no está habilitado.');
+                abrirPortal(await res.json());
+            } catch (err) {
+                error.textContent = err instanceof TypeError ? 'No hay conexión con el servidor.' : err.message;
+                error.classList.remove('hidden');
+            }
+        }
+
+        async function realizarLogin(e) {
+            e.preventDefault();
+            const boton = document.getElementById('btn-login');
+            const error = document.getElementById('login-error');
+            error.classList.add('hidden');
+            boton.disabled = true;
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('login-email').value,
+                        clave: document.getElementById('login-pass').value,
+                    }),
+                });
+                if (!res.ok) {
+                    const detalle = (await res.json().catch(() => ({}))).detail;
+                    throw new Error(typeof detalle === 'string' ? detalle : 'No se pudo iniciar sesión.');
+                }
+                document.getElementById('login-pass').value = '';
+                abrirPortal(await res.json());
+            } catch (err) {
+                error.textContent = err instanceof TypeError ? 'No hay conexión con el servidor.' : err.message;
+                error.classList.remove('hidden');
+            } finally {
+                boton.disabled = false;
+            }
+        }
+
+        function alternarClave() {
+            const campo = document.getElementById('login-pass');
+            const visible = campo.type === 'password';
+            campo.type = visible ? 'text' : 'password';
+            document.getElementById('btn-ver-clave').setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            document.getElementById('btn-ver-clave').firstElementChild.className = visible ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        }
+
+        function abrirPortal(medico) {
+            medicoActual = medico;
+            document.getElementById('aside-nombre').textContent = medico.nombre;
+            document.getElementById('aside-especialidad').textContent = medico.especialidad || '—';
+            document.getElementById('aside-registro').textContent = medico.registro || '—';
+            document.getElementById('hdr-medico').textContent = medico.nombre;
             document.getElementById('screen-login').classList.add('hidden');
+            document.getElementById('screen-patient-data').classList.add('hidden');
+            document.getElementById('screen-telemed').classList.add('hidden');
             document.getElementById('screen-portal').classList.remove('hidden');
             actualizarCola();
             cargarHistorial();
+            iniciarActualizacionAutomatica();
         }
 
-        function cerrarSesion() {
-            localStorage.removeItem(sessionKey);
-            location.reload();
+        /** Muestra el login y descarta cualquier dato de pacientes que hubiera en memoria. */
+        function mostrarLogin(mensaje) {
+            clearInterval(temporizadorCola);
+            cerrarLlamadaDoctor(false);
+            medicoActual = null; colaActual = []; pacienteActual = null;
+            ['screen-portal', 'screen-patient-data', 'screen-telemed'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('screen-login').classList.remove('hidden');
+            const error = document.getElementById('login-error');
+            error.textContent = mensaje || '';
+            error.classList.toggle('hidden', !mensaje);
+            document.getElementById('queue-table-body').innerHTML = '';
+            document.getElementById('history-table-body').innerHTML = '';
+            historialCompleto = [];
+            cerrarDetalleHistorial();
+        }
+
+        function sesionExpirada() { if (medicoActual) mostrarLogin('Su sesión expiró. Ingrese nuevamente.'); }
+
+        async function cerrarSesion() {
+            try { await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+            mostrarLogin('');
+        }
+
+        /** Refresca la cola cada pocos segundos mientras el médico mira la lista (y no está en una consulta). */
+        function iniciarActualizacionAutomatica() {
+            clearInterval(temporizadorCola);
+            temporizadorCola = setInterval(() => {
+                const viendoCola = !document.getElementById('screen-portal').classList.contains('hidden')
+                    && !document.getElementById('tab-queue').classList.contains('hidden');
+                if (viendoCola && !document.hidden) actualizarCola();
+            }, INTERVALO_COLA_MS);
         }
 
         function switchTab(tab) {
+            document.getElementById('screen-portal').classList.remove('hidden');
             document.getElementById('tab-queue').classList.add('hidden');
             document.getElementById('tab-history').classList.add('hidden');
             if (tab === 'queue') {
@@ -405,12 +602,22 @@
             }
         }
 
-        async function actualizarCola() {
+        // Momento de la última interacción con un selector de prioridad (para no cerrarle el desplegable al médico).
+        let ultimaInteraccionPrioridad = 0;
+        ['pointerdown', 'keydown', 'focusin'].forEach(ev => document.addEventListener(ev, e => {
+            if (e.target.closest && e.target.closest('#queue-table-body select')) ultimaInteraccionPrioridad = Date.now();
+        }, true));
+
+        async function actualizarCola(forzar = false) {
+            // El refresco automático no redibuja la tabla mientras el médico está usando un selector.
+            if (!forzar && Date.now() - ultimaInteraccionPrioridad < 8000
+                && document.activeElement && document.activeElement.matches('#queue-table-body select')) return;
             try {
-                const res = await fetch('/api/v1/cola-pacientes');
+                const res = await api('/api/v1/cola-pacientes');
                 if (res.ok) {
                     colaActual = await res.json();
                     renderizarTablaCola(colaActual);
+                    document.getElementById('cola-actualizada').textContent = '· Actualizado ' + new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 }
             } catch(e) {
                 console.warn("Error al solicitar cola de pacientes...");
@@ -449,22 +656,24 @@
                 tr.cells[3].textContent = p.prediagnostico || 'En evaluación';
 
                 const prioridad = document.createElement('select');
-                prioridad.className = 'rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold';
+                const colorDe = valor => nivelesTriage.find(n => n[0] === Number(valor))[2];
+                prioridad.className = 'rounded-lg border-2 px-2 py-2 text-xs font-bold ' + colorDe(p.prioridad);
                 prioridad.setAttribute('aria-label', 'Prioridad de triage para ' + p.rut);
                 for (const [valor, etiqueta] of nivelesTriage) {
                     prioridad.add(new Option(etiqueta, valor));
                 }
                 prioridad.value = p.prioridad;
+                if (p.prioridad === 1) tr.classList.add('bg-rose-50');
                 prioridad.addEventListener('change', async () => {
                     prioridad.disabled = true;
                     try {
-                        const res = await fetch('/api/v1/cola-pacientes/' + encodeURIComponent(p.id) + '/prioridad', {
+                        const res = await api('/api/v1/cola-pacientes/' + encodeURIComponent(p.id) + '/prioridad', {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ prioridad: Number(prioridad.value) }),
                         });
                         if (!res.ok) throw new Error('No se pudo guardar la prioridad.');
-                        await actualizarCola();
+                        await actualizarCola(true);
                         document.getElementById(prioridad.id)?.focus();
                     } catch (err) {
                         prioridad.value = p.prioridad;
@@ -474,7 +683,13 @@
                     }
                 });
                 prioridad.id = 'triage-' + p.id;
-                tr.cells[4].appendChild(prioridad);
+                const celdaPrioridad = document.createElement('div');   // agrupa selector + insignia (ordena la vista móvil)
+                tr.cells[4].appendChild(celdaPrioridad);
+                celdaPrioridad.appendChild(prioridad);
+                const origen = document.createElement('span');
+                origen.className = 'mt-1 block text-[10px] font-bold ' + (p.prioridad_origen === 'manual' ? 'text-sky-700' : 'text-slate-500');
+                origen.innerHTML = p.prioridad_origen === 'manual' ? '<i class="fa-solid fa-user-pen"></i> Ajustada por médico' : '<i class="fa-solid fa-robot"></i> Auto-triage';
+                celdaPrioridad.appendChild(origen);
                 ['Hora', 'RUT', 'Síntomas', 'Triage', 'Prioridad'].forEach((etiqueta, i) => {
                     tr.cells[i].dataset.label = etiqueta;
                 });
@@ -500,15 +715,36 @@
             });
 
             const inst = pacienteActual.instrumentos || {};
-            document.getElementById('inst-pa').innerText = inst.pa || '—';
-            document.getElementById('inst-fc').innerText = inst.fc || '—';
-            document.getElementById('inst-temp').innerText = inst.temp || '—';
-            document.getElementById('inst-sat').innerText = inst.sat || '—';
+            pintarVitales('inst', inst);
+            document.getElementById('inst-simulado').classList.toggle('hidden', !inst.simulado);
             document.getElementById('inst-diag').innerText = pacienteActual.prediagnostico || 'En evaluación';
 
             document.getElementById('screen-portal').classList.add('hidden');
             document.getElementById('screen-patient-data').classList.remove('hidden');
             window.scrollTo(0, 0);
+        }
+
+        /** ¿El valor está fuera del rango habitual? (solo para resaltar visualmente; no es un diagnóstico) */
+        function vitalAnormal(clave, i) {
+            switch (clave) {
+                case 'temp': return i.temp_c >= 38 || i.temp_c < 35;
+                case 'sat':  return i.spo2 < 95;
+                case 'fc':   return i.fc_lpm > 100 || i.fc_lpm < 55;
+                case 'pa':   return i.pa_sis >= 140 || i.pa_dia >= 90 || i.pa_sis < 90;
+                default:     return false;
+            }
+        }
+
+        /** Escribe los 4 signos vitales en los elementos `${prefijo}-pa|fc|temp|sat` y marca en rojo los alterados. */
+        function pintarVitales(prefijo, inst) {
+            ['pa', 'fc', 'temp', 'sat'].forEach(k => {
+                const el = document.getElementById(`${prefijo}-${k}`);
+                const alerta = vitalAnormal(k, inst);
+                el.innerText = (inst[k] || '—') + (alerta ? ' ⚠' : '');
+                el.classList.toggle('text-rose-700', alerta);
+                el.classList.toggle('text-slate-900', !alerta);
+                el.title = alerta ? 'Fuera del rango habitual' : '';
+            });
         }
 
         function volverAlPortal() {
@@ -522,11 +758,7 @@
             document.getElementById('sum-nombre').innerText = pacienteActual.nombre || 'Paciente Tótem';
             document.getElementById('sum-rut').innerText = pacienteActual.rut;
             
-            const inst = pacienteActual.instrumentos || {};
-            document.getElementById('sum-pa').innerText = inst.pa || '—';
-            document.getElementById('sum-fc').innerText = inst.fc || '—';
-            document.getElementById('sum-temp').innerText = inst.temp || '—';
-            document.getElementById('sum-sat').innerText = inst.sat || '—';
+            pintarVitales('sum', pacienteActual.instrumentos || {});
 
             const sintomas = Array.isArray(pacienteActual.sintomas) ? pacienteActual.sintomas.join(', ') : pacienteActual.sintomas;
             document.getElementById('sum-sintomas').innerText = sintomas || 'Sin síntomas reportados';
@@ -540,138 +772,270 @@
             document.getElementById('consulta-diagnostico').value = '';
             document.getElementById('consulta-receta').value = '';
             document.getElementById('consulta-error').textContent = '';
+            reiniciarChatDoctor();
+            restablecerBotonVolver();
             window.scrollTo(0, 0);
 
             iniciarWebRTCDoctor();
         }
 
+        // =====================================================================
+        //  HISTORIAL: búsqueda por RUT / fecha + detalle en ventana
+        // =====================================================================
         async function cargarHistorial() {
             try {
-                const res = await fetch('/api/v1/historial');
+                const res = await api('/api/v1/historial');
                 if (res.ok) {
-                    const data = await res.json();
-                    renderizarHistorial(data);
+                    historialCompleto = await res.json();
+                    filtrarHistorial();
                 }
-            } catch(e) {}
+            } catch (e) {}
         }
 
-        function renderizarHistorial(lista) {
+        /** Deja solo dígitos y K para comparar RUTs sin importar puntos o guion. */
+        const normalizarRut = t => String(t || '').replace(/[^0-9kK]/g, '').toUpperCase();
+
+        function filtrarHistorial() {
+            const rut = normalizarRut(document.getElementById('hist-rut').value);
+            const desde = document.getElementById('hist-desde').value;     // 'YYYY-MM-DD' o ''
+            const hasta = document.getElementById('hist-hasta').value;
+            const lista = historialCompleto.filter(item => {
+                if (rut && !normalizarRut(item.rut).includes(rut)) return false;
+                const dia = String(item.fecha || '').slice(0, 10);           // la fecha viene como ISO 'YYYY-MM-DDTHH:MM:SS'
+                if (desde && dia < desde) return false;
+                if (hasta && dia > hasta) return false;
+                return true;
+            });
+            const hayFiltro = !!(rut || desde || hasta);
+            document.getElementById('hist-contador').textContent = hayFiltro
+                ? `${lista.length} de ${historialCompleto.length} atenciones`
+                : `${historialCompleto.length} atenciones`;
+            renderizarHistorial(lista, hayFiltro);
+        }
+
+        function limpiarFiltrosHistorial() {
+            ['hist-rut', 'hist-desde', 'hist-hasta'].forEach(id => document.getElementById(id).value = '');
+            filtrarHistorial();
+        }
+
+        function formatearFecha(valor) {
+            const f = new Date(valor);
+            return Number.isNaN(f.getTime()) ? valor : f.toLocaleString('es-CL');
+        }
+
+        function renderizarHistorial(lista, hayFiltro = false) {
             const tbody = document.getElementById('history-table-body');
             tbody.innerHTML = "";
             if (!lista.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Aún no hay atenciones registradas.</td></tr>';
+                const fila = tbody.insertRow(); const celda = fila.insertCell();
+                celda.colSpan = 6; celda.className = 'p-8 text-center text-slate-500';
+                celda.textContent = hayFiltro ? 'No hay atenciones que coincidan con la búsqueda.' : 'Aún no hay atenciones registradas.';
                 return;
             }
             lista.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition align-top';
-                const fecha = new Date(item.fecha);
-                const valores = [
-                    item.id,
-                    Number.isNaN(fecha.getTime()) ? item.fecha : fecha.toLocaleString('es-CL'),
-                    item.rut,
-                    item.diagnostico,
-                    item.receta,
-                    item.estado,
-                ];
+                tr.className = 'fila-historial hover:bg-emerald-50 transition align-top';
+                tr.tabIndex = 0; tr.setAttribute('role', 'button');
+                tr.setAttribute('aria-label', `Ver detalle de la atención de ${item.rut}`);
+                const valores = [item.id, formatearFecha(item.fecha), item.rut, item.diagnostico, item.receta, item.estado];
                 const etiquetas = ['Código', 'Fecha y hora', 'RUT', 'Diagnóstico', 'Receta', 'Estado'];
                 valores.forEach((valor, indice) => {
                     const celda = tr.insertCell();
-                    celda.className = 'p-3 whitespace-pre-wrap [overflow-wrap:anywhere]';
+                    celda.className = 'p-3 [overflow-wrap:anywhere]';
                     celda.dataset.label = etiquetas[indice];
-                    celda.textContent = valor || '—';
+                    const cont = document.createElement('div');
+                    cont.className = indice === 3 || indice === 4 ? 'celda-corta whitespace-pre-wrap' : '';
+                    cont.textContent = valor || '—';
+                    celda.appendChild(cont);
                 });
+                tr.addEventListener('click', () => abrirDetalleHistorial(item.id, tr));
+                tr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirDetalleHistorial(item.id, tr); } });
                 tbody.appendChild(tr);
             });
         }
 
-        async function obtenerMedios() {
-            const constraints = {
-                video: { facingMode: 'user' },
-                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-            };
-            let stream;
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (err) {
-                console.warn("Falló audio+video, probando solo video...", err);
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                alert("No se pudo acceder al micrófono, por lo que solo se enviará video.\n\nRevise el permiso de micrófono del navegador.");
-                return stream;
-            }
-            return stream;
+        function abrirDetalleHistorial(id, filaOrigen) {
+            const item = historialCompleto.find(x => x.id === id);
+            if (!item) return;
+            ultimoFocoHistorial = filaOrigen || null;
+            document.getElementById('mh-id').textContent = item.id;
+            document.getElementById('mh-rut').textContent = item.rut || '—';
+            document.getElementById('mh-fecha').textContent = formatearFecha(item.fecha) || '—';
+            document.getElementById('mh-estado').textContent = item.estado || '—';
+            document.getElementById('mh-diagnostico').textContent = item.diagnostico || 'Sin diagnóstico registrado.';
+            document.getElementById('mh-receta').textContent = item.receta || 'Sin receta ni indicaciones registradas.';
+            document.getElementById('modal-historial').classList.remove('hidden');
+            document.getElementById('mh-volver').focus();
         }
 
+        function cerrarDetalleHistorial() {
+            const modal = document.getElementById('modal-historial');
+            if (modal.classList.contains('hidden')) return;
+            modal.classList.add('hidden');
+            ultimoFocoHistorial?.focus?.();
+            ultimoFocoHistorial = null;
+        }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDetalleHistorial(); });
+
+        // =====================================================================
+        //  MEDIOS LOCALES DEL MÉDICO (la cámara y el micrófono son OPCIONALES)
+        // =====================================================================
+        /** Intenta video+audio → solo audio → solo video. Devuelve null (sin alertas) si no hay nada disponible. */
+        async function obtenerMedios() {
+            if (!navigator.mediaDevices?.getUserMedia) return null;      // p. ej. página sin HTTPS/localhost
+            const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+            const intentos = [{ video: { facingMode: 'user' }, audio }, { video: false, audio }, { video: true, audio: false }];
+            for (const restricciones of intentos) {
+                try { return await navigator.mediaDevices.getUserMedia(restricciones); }
+                catch (err) { console.warn('Medios no disponibles con', restricciones, err.name); }
+            }
+            return null;
+        }
+
+        function mostrarEstadoMedios(stream) {
+            const video = !!stream?.getVideoTracks().length, audio = !!stream?.getAudioTracks().length;
+            mostrarFlex('local-sin-camara', !video);
+            document.getElementById('medios-estado').textContent =
+                video && audio ? '' :
+                !video && audio ? 'Sin cámara: el paciente podrá oírlo/a y usted verá y oirá al paciente.' :
+                video && !audio ? 'Sin micrófono: el paciente verá su imagen; use el chat para hablarle.' :
+                'Sin cámara ni micrófono (o permisos denegados): usted verá y oirá al paciente y puede escribirle en el chat.';
+        }
+
+        // =====================================================================
+        //  VIDEOLLAMADA (WebRTC): el médico RESPONDE a la oferta del tótem aunque no tenga cámara
+        // =====================================================================
         async function iniciarWebRTCDoctor() {
             const llamada = new AbortController();
             llamadaDoctor = llamada;
             try {
-                const stream = await obtenerMedios();
-                if (llamada.signal.aborted) {
-                    stream.getTracks().forEach(track => track.stop());
-                    return;
-                }
+                const stream = await obtenerMedios();                  // nunca lanza: puede ser null
+                if (llamada.signal.aborted) { stream?.getTracks().forEach(t => t.stop()); return; }
                 localStream = stream;
-                document.getElementById('localVideo').srcObject = localStream;
+                if (stream) document.getElementById('localVideo').srcObject = stream;
+                mostrarEstadoMedios(stream);
 
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 doctorWS = new WebSocket(`${protocol}//${window.location.host}/ws/telemedicina/doctor`);
                 peerConnection = new RTCPeerConnection(rtcConfig);
-
-                const conexion = peerConnection;
-                const socket = doctorWS;
+                const conexion = peerConnection, socket = doctorWS;
                 let pendingCandidates = [];
 
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                stream?.getTracks().forEach(track => conexion.addTrack(track, stream));
 
-                peerConnection.ontrack = event => {
-                    const remoteVideo = document.getElementById('remoteVideo');
-                    if (remoteVideo && event.streams && event.streams[0]) {
-                        remoteVideo.srcObject = event.streams[0];
-                        remoteVideo.play().catch(() => {});
+                // El video/audio del paciente se acumula en un MediaStream propio (funciona aunque
+                // el paciente no declare "stream" en su señal, p. ej. si solo recibe).
+                const remoteVideo = document.getElementById('remoteVideo');
+                const medioRemoto = new MediaStream();
+                remoteVideo.srcObject = medioRemoto;
+                conexion.ontrack = event => {
+                    medioRemoto.addTrack(event.track);
+                    remoteVideo.play().catch(() => {});
+                    if (event.track.kind === 'video') {
+                        const actualizar = () => mostrarFlex('remote-sin-video', event.track.muted || event.track.readyState !== 'live');
+                        event.track.onmute = actualizar; event.track.onunmute = actualizar; event.track.onended = actualizar;
+                        actualizar();
                     }
                 };
-
-                peerConnection.onicecandidate = event => {
-                    if (event.candidate && doctorWS && doctorWS.readyState === WebSocket.OPEN) {
-                        doctorWS.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-                    }
+                conexion.onicecandidate = event => {
+                    if (event.candidate && socket.readyState === WebSocket.OPEN)
+                        socket.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
                 };
+                socket.onopen = () => habilitarChatDoctor(true);
+                socket.onclose = () => { if (doctorWS === socket) habilitarChatDoctor(false); };
 
                 socket.onmessage = async (event) => {
                     try {
                         const msg = JSON.parse(event.data);
+                        if (msg.tipo === 'chat') { agregarChatDoctor('paciente', msg.texto); return; }
                         if (msg.type === 'end') {
                             cerrarLlamadaDoctor(false);
                             document.getElementById('call-status').textContent = 'El paciente finalizó la llamada';
                         } else if (msg.type === 'offer') {
                             await conexion.setRemoteDescription(new RTCSessionDescription(msg.offer));
-                            for (const c of pendingCandidates) {
-                                await conexion.addIceCandidate(c);
-                            }
+                            // Clave del caso "sin cámara": todo lo que no podamos enviar se declara SOLO RECEPCIÓN
+                            // (equivale a offerToReceiveVideo/Audio), así igual llegan video y audio del paciente.
+                            conexion.getTransceivers().forEach(t => { t.direction = t.sender.track ? 'sendrecv' : 'recvonly'; });
+                            for (const c of pendingCandidates) await conexion.addIceCandidate(c);
                             pendingCandidates = [];
                             const answer = await conexion.createAnswer();
                             await conexion.setLocalDescription(answer);
-                            if (socket.readyState === WebSocket.OPEN) {
-                                socket.send(JSON.stringify({ type: 'answer', answer }));
-                            }
+                            if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'answer', answer }));
                         } else if (msg.type === 'candidate') {
                             const cand = new RTCIceCandidate(msg.candidate);
-                            if (conexion.remoteDescription) {
-                                await conexion.addIceCandidate(cand);
-                            } else {
-                                pendingCandidates.push(cand);
-                            }
+                            if (conexion.remoteDescription) await conexion.addIceCandidate(cand); else pendingCandidates.push(cand);
                         }
                     } catch (err) {
                         if (!llamada.signal.aborted) console.error("Error procesando señalización WebRTC:", err);
                     }
                 };
-            } catch(e) {
+            } catch (e) {
                 if (llamada.signal.aborted) return;
-                console.error("Error iniciando cámara WebRTC del doctor:", e);
-                alert("Verifique los permisos de cámara y micrófono en los ajustes del navegador.");
+                console.error("Error iniciando la videollamada del doctor:", e);
+                document.getElementById('call-status').textContent = 'No se pudo iniciar la videollamada (puede seguir con el chat si el paciente está conectado)';
             }
+        }
+
+        // =====================================================================
+        //  CHAT ESCRITO (JSON {"tipo":"chat","emisor":"doctor|paciente","texto":"..."} por el mismo WebSocket)
+        // =====================================================================
+        function habilitarChatDoctor(si) {
+            ['doctor-chat-msg', 'doctor-chat-enviar', 'doctor-chat-receta'].forEach(id => document.getElementById(id).disabled = !si);
+        }
+        function reiniciarChatDoctor() {
+            document.getElementById('doctor-chat-log').innerHTML = '';
+            document.getElementById('doctor-chat-msg').value = '';
+            habilitarChatDoctor(false);
+            agregarChatDoctor('sistema', 'El chat se activa al conectar con el paciente.');
+        }
+        function agregarChatDoctor(emisor, texto) {
+            if (typeof texto !== 'string' || !texto.trim()) return;
+            const log = document.getElementById('doctor-chat-log');
+            const el = document.createElement('div');
+            if (emisor === 'sistema') { el.className = 'text-center text-[11px] font-semibold text-slate-400'; }
+            else { el.className = 'chat-doc-burbuja ' + (emisor === 'doctor' ? 'chat-doc-doctor' : 'chat-doc-paciente'); }
+            el.textContent = texto;
+            log.appendChild(el);
+            log.scrollTop = log.scrollHeight;
+        }
+        function enviarChatDoctor(textoForzado) {
+            const input = document.getElementById('doctor-chat-msg');
+            const texto = (typeof textoForzado === 'string' ? textoForzado : input.value).trim().slice(0, 500);
+            if (!texto) return;
+            if (!doctorWS || doctorWS.readyState !== WebSocket.OPEN) { agregarChatDoctor('sistema', 'Sin conexión con el paciente: el mensaje no se envió.'); return; }
+            doctorWS.send(JSON.stringify({ tipo: 'chat', emisor: 'doctor', texto }));
+            agregarChatDoctor('doctor', texto);
+            if (typeof textoForzado !== 'string') { input.value = ''; input.focus(); }
+        }
+        /** Envía por chat lo escrito en "Receta e indicaciones" (en trozos de 500 caracteres). */
+        function enviarRecetaAlChat() {
+            const texto = document.getElementById('consulta-receta').value.trim();
+            if (!texto) { agregarChatDoctor('sistema', 'Primero escriba la receta o indicaciones.'); return; }
+            for (let i = 0; i < texto.length; i += 500) enviarChatDoctor(texto.slice(i, i + 500));
+        }
+
+        // =====================================================================
+        //  NAVEGACIÓN: "Volver" sin cerrar la sesión del médico
+        // =====================================================================
+        function restablecerBotonVolver() {
+            clearTimeout(temporizadorVolver); temporizadorVolver = null;
+            document.getElementById('back-from-call-texto').textContent = 'Volver al panel';
+        }
+        /** Dentro de una llamada activa pide una segunda pulsación (evita cortar la llamada por error). */
+        function volverDesdeLlamada() {
+            const llamadaActiva = !!doctorWS;
+            if (llamadaActiva && !temporizadorVolver) {
+                document.getElementById('back-from-call-texto').textContent = 'Pulse otra vez: termina la llamada sin guardar';
+                temporizadorVolver = setTimeout(restablecerBotonVolver, 5000);
+                return;
+            }
+            restablecerBotonVolver();
+            cerrarLlamadaDoctor(true);
+            pacienteActual = null;
+            document.getElementById('screen-telemed').classList.add('hidden');
+            document.getElementById('screen-portal').classList.remove('hidden');
+            actualizarCola(true);
+            window.scrollTo(0, 0);
         }
 
         async function finalizarConsulta() {
@@ -684,7 +1048,7 @@
             error.textContent = '';
 
             try {
-                const res = await fetch('/api/v1/cola-pacientes/' + encodeURIComponent(pacienteActual.id) + '/finalizar', {
+                const res = await api('/api/v1/cola-pacientes/' + encodeURIComponent(pacienteActual.id) + '/finalizar', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ diagnostico: diagnostico.value, receta: receta.value }),
@@ -735,6 +1099,8 @@
             localStream = null;
             document.getElementById('localVideo').srcObject = null;
             document.getElementById('remoteVideo').srcObject = null;
+            habilitarChatDoctor(false);
+            mostrarFlex('remote-sin-video', false);
         }
     </script>
 </body>
