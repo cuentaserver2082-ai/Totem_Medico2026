@@ -781,6 +781,13 @@
     //  para conectar una cámara térmica real, reemplace `generarTemperatura()`.
     //  Oxígeno, pulso y presión NO se miden aquí: vienen de la pantalla de sensores.
     // =====================================================================
+    /** En tablets/celulares NO se enfoca el campo de texto solo: abriría el teclado en pantalla sin que el paciente
+     *  lo pida (el asistente se maneja por voz y botones). Con teclado físico/mouse sí se enfoca. */
+    function enfocarSiHayTeclado(el) {
+        if (window.matchMedia('(pointer: coarse)').matches) return;
+        el.focus({ preventScroll: true });
+    }
+
     function aleatorioNormal(media, desv) {                 // distribución normal (Box-Muller)
         const u = 1 - Math.random(), v = Math.random();
         return media + desv * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
@@ -1049,7 +1056,7 @@
         signosVitales = armarSignosVitales();                          // los 4 valores juntos (o null si se omitió algo)
         irAPantalla('triage');
         hablarTexto('Cuénteme, ¿qué síntoma o molestia principal tiene hoy? Puede hablar por el micrófono o presionar una opción.');
-        $('user-msg').focus({ preventScroll: true });
+        enfocarSiHayTeclado($('user-msg'));
     }
 
     // =====================================================================
@@ -1163,7 +1170,7 @@
         if (!filtro.valido) {
             mostrarEstadoChat(filtro.mensaje, true);
             hablarTexto(filtro.mensaje);
-            input.focus();
+            enfocarSiHayTeclado(input);
             return;
         }
         const text = filtro.texto;
@@ -1435,7 +1442,7 @@
         telemedicinaWS.send(JSON.stringify({ tipo: 'chat', emisor: 'paciente', texto }));
         agregarChatLlamada('paciente', texto);
         input.value = '';
-        input.focus({ preventScroll: true });
+        enfocarSiHayTeclado(input);
     }
 
     /** Cierra cámara, micrófono, WebSocket y WebRTC (sin cambiar de pantalla). */
